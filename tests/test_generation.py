@@ -5,7 +5,7 @@ import random
 import pytest
 
 from lechery.content.areas import plains, tutorial
-from lechery.content.game import new_game
+from lechery.content.game import new_world
 from lechery.generation import (
     DungeonShape,
     Layout,
@@ -220,16 +220,16 @@ def test_areas_are_independent_of_generation_order():
 
 @pytest.mark.parametrize("seed", range(15))
 def test_new_game_builds_a_valid_world(seed):
-    world = new_game(seed)
+    world, _levels = new_world(seed)
     assert world.validate() == []
-    assert world.current_room.role is Role.ENTRANCE
+    assert world.area(tutorial.AREA_ID).entry_room.role is Role.ENTRANCE
 
 
 @pytest.mark.parametrize("seed", range(15))
 def test_the_town_is_reachable_from_the_starting_room(seed):
     """End to end: spawn, cross the dungeon, reach the hub's haven."""
-    world = new_game(seed)
-    start = world.current_room
+    world, _levels = new_world(seed)
+    start = world.area(tutorial.AREA_ID).entry_room
 
     seen = {start.id}
     frontier = [start]
@@ -244,7 +244,7 @@ def test_the_town_is_reachable_from_the_starting_room(seed):
 
 
 def test_the_dungeon_exit_leads_into_the_plains():
-    world = new_game(3)
+    world, _levels = new_world(3)
     dungeon_exit = world.area(tutorial.AREA_ID).first_with_role(Role.EXIT)
     world.place(dungeon_exit)
     result = world.move("up")
@@ -253,7 +253,7 @@ def test_the_dungeon_exit_leads_into_the_plains():
 
 
 def test_the_same_seed_rebuilds_the_same_world():
-    first = new_game(77)
-    second = new_game(77)
+    first, _ = new_world(77)
+    second, _ = new_world(77)
     assert [r.id for r in first.rooms] == [r.id for r in second.rooms]
     assert [r.name for r in first.rooms] == [r.name for r in second.rooms]

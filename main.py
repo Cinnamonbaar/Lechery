@@ -1,7 +1,4 @@
-"""Entry point: open a window and play.
-
-Pass a seed to replay a particular map: `python main.py 1234`.
-"""
+"""Entry point. Pass a seed to replay a map: `python main.py 1234`."""
 
 from __future__ import annotations
 
@@ -9,26 +6,28 @@ import sys
 
 import pygame
 
-from lechery.content.game import new_game
-from lechery.ui.roomview import RoomView
+from lechery.session import Session
+from lechery.ui.worldview import WorldView
 
-SIZE = (900, 620)
+SIZE = (1024, 720)
 FPS = 60
 
 
 def main(argv: list[str]) -> int:
-    seed = int(argv[0]) if argv else None
-    world = new_game(seed)
-    print(f"seed: {world.seed}")
+    session = Session.new_game(int(argv[0]) if argv else None)
+    print(f"seed: {session.world.seed}")
 
     pygame.init()
     pygame.display.set_caption("Lechery")
     screen = pygame.display.set_mode(SIZE)
     clock = pygame.time.Clock()
 
-    view = RoomView(world, SIZE)
+    view = WorldView(session, SIZE)
     running = True
     while running:
+        # Clamped so that a hitch cannot tunnel the player through a wall.
+        dt = min(clock.tick(FPS) / 1000.0, 1 / 30)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -37,9 +36,9 @@ def main(argv: list[str]) -> int:
             else:
                 view.handle_event(event)
 
+        view.update(dt)
         view.draw(screen)
         pygame.display.flip()
-        clock.tick(FPS)
 
     pygame.quit()
     return 0

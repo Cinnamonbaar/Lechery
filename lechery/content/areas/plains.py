@@ -106,12 +106,14 @@ def layout() -> Layout:
     return hub
 
 
-def build(rng: random.Random) -> Area:
-    return build_area(
-        layout(),
+def build(rng: random.Random) -> tuple[Area, Layout]:
+    hub = layout()
+    area = build_area(
+        hub,
         template_pool(),
         area_id=AREA_ID,
         name="The Plains",
         description="Open country, and the town that sits in the middle of it.",
         rng=rng,
     )
+    return area, hub

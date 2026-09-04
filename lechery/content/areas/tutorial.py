@@ -13,6 +13,7 @@ from __future__ import annotations
 import random
 
 from ...generation import DungeonShape, RoomTemplate, TemplatePool, build_area, generate_dungeon
+from ...generation.layout import Layout
 from ...world import Area, Role
 
 AREA_ID = "tutorial"
@@ -133,7 +134,8 @@ def template_pool() -> TemplatePool:
     )
 
 
-def build(rng: random.Random) -> Area:
+def build(rng: random.Random) -> tuple[Area, Layout]:
+    """Returns the area and the layout it came from; the carver needs both."""
     layout = generate_dungeon(SHAPE, rng, prefix="t")
 
     # Pin the bookends. The generator guarantees exactly one ENTRANCE and,
@@ -146,7 +148,7 @@ def build(rng: random.Random) -> Area:
     for node in layout.with_role(Role.BOSS):
         node.template_id = "tut_boss"
 
-    return build_area(
+    area = build_area(
         layout,
         template_pool(),
         area_id=AREA_ID,
@@ -154,3 +156,4 @@ def build(rng: random.Random) -> Area:
         description="Somewhere under the plains, and older than them.",
         rng=rng,
     )
+    return area, layout

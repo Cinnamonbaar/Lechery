@@ -3,6 +3,7 @@
     python tools/mapdump.py            # a random seed
     python tools/mapdump.py 1234       # a specific one
     python tools/mapdump.py 1234 plains
+    python tools/mapdump.py 1234 --tiles   # the carved floorplan
 
 Each cell shows the room's role; corridors are drawn between linked rooms.
 """
@@ -14,7 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from lechery.content.game import new_game
+from lechery.content.game import new_world
+from lechery.space import Level
 from lechery.world import Role, World
 
 GLYPHS = {
@@ -30,6 +32,7 @@ GLYPHS = {
 
 
 def dump(world: World, area_id: str) -> str:
+    """The abstract layout: one glyph per room, roles shown."""
     area = world.area(area_id)
     placed = {room.position: room for room in area if room.position is not None}
     if not placed:
@@ -53,15 +56,16 @@ def dump(world: World, area_id: str) -> str:
 
 def main(argv: list[str]) -> int:
     seed = int(argv[0]) if argv else None
-    world = new_game(seed)
+    world, levels = new_world(seed)
     only = argv[1] if len(argv) > 1 else None
+    floorplan = "--tiles" in argv
 
     print(f"seed {world.seed}")
     for area in world.areas.values():
         if only and area.id != only:
             continue
         print(f"\n{area.name}  ({len(area)} rooms)")
-        print(dump(world, area.id))
+        print(str(levels[area.id].tilemap) if floorplan else dump(world, area.id))
     print("\n" + "  ".join(f"{g} {r.value}" for r, g in GLYPHS.items()))
     return 0
 

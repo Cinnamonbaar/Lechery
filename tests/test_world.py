@@ -2,7 +2,7 @@
 
 import pytest
 
-from lechery.content.game import new_game
+from lechery.content.game import new_world
 from lechery.world import Area, Direction as D, Room, World
 
 
@@ -46,7 +46,7 @@ def test_duplicate_room_id_across_areas_is_rejected():
 
 
 def test_assembled_game_world_validates():
-    assert new_game(seed=1).validate() == []
+    assert new_world(seed=1)[0].validate() == []
 
 
 def test_validate_reports_dangling_exit():
