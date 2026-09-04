@@ -11,6 +11,7 @@ import pygame
 
 from ..session import Session
 from ..space.tiles import Tile
+from .camera import offset_for
 from .silhouette import build_silhouette, draw_actor
 from .text import TextBlock, TextStyle
 
@@ -72,21 +73,22 @@ class WorldView:
         import math
 
         mx, my = pygame.mouse.get_pos()
-        cx, cy = self.size[0] / 2, self.size[1] / 2
-        if (mx - cx, my - cy) != (0, 0):
-            self.session.player.facing = math.atan2(my - cy, mx - cx)
+        ox, oy = self.camera_offset()
+        px, py = self.session.player.position
+        dx, dy = mx - (px * SCALE + ox), my - (py * SCALE + oy)
+        if (dx, dy) != (0, 0):
+            self.session.player.facing = math.atan2(dy, dx)
 
     # -- camera -----------------------------------------------------------
 
     def camera_offset(self) -> tuple[float, float]:
-        """Pixel offset from world origin to screen, centred on the player.
-
-        No clamping to the map edges: rooms are irregular and a clamped
-        camera lurches when the player walks into a corner of the floorplan.
-        Void around the level reads as darkness, which is wanted anyway.
-        """
-        px, py = self.session.player.position
-        return (self.size[0] / 2 - px * SCALE, self.size[1] / 2 - py * SCALE)
+        """Frame the room whole if it fits; follow the player if it does not."""
+        return offset_for(
+            self.session.room_map.size,
+            self.session.player.position,
+            self.size,
+            SCALE,
+        )
 
     # -- drawing ----------------------------------------------------------
 
@@ -109,7 +111,7 @@ class WorldView:
         )
 
     def _draw_tiles(self, surface: pygame.Surface, offset: tuple[float, float]) -> None:
-        tilemap = self.session.level.tilemap
+        tilemap = self.session.room_map.tilemap
         ox, oy = offset
         xs, ys = self._visible_tile_range(offset)
         for ty in ys:
@@ -124,15 +126,23 @@ class WorldView:
 
     def _draw_portals(self, surface: pygame.Surface, offset: tuple[float, float]) -> None:
         ox, oy = offset
-        for (tx, ty), _portal in self.session.level.portals.items():
+        room_portals = self.session.level.portals.get(self.session.player.room_id, {})
+        for (tx, ty), _portal in room_portals.items():
             rect = pygame.Rect(tx * SCALE + ox, ty * SCALE + oy, SCALE, SCALE)
             pygame.draw.rect(surface, PORTAL, rect.inflate(-6, -6), width=2, border_radius=3)
 
     def _draw_player(self, surface: pygame.Surface) -> None:
+        """The player is only screen-centred when the camera is following.
+
+        In a framed room the camera is still, so the player must be drawn at
+        their actual place in it.
+        """
+        ox, oy = self.camera_offset()
+        px, py = self.session.player.position
         draw_actor(
             surface,
             self.silhouette,
-            (self.size[0] / 2, self.size[1] / 2),
+            (px * SCALE + ox, py * SCALE + oy),
             self.session.player.facing,
             SCALE,
         )
@@ -163,7 +173,9 @@ class WorldView:
         self._draw_hint(surface)
 
     def _draw_hint(self, surface: pygame.Surface) -> None:
-        portal = self.session.level.portal_at(self.session.player.position)
+        portal = self.session.level.portal_at(
+            self.session.player.room_id, self.session.player.position
+        )
         hint = portal.label if portal else "WASD to move  ·  mouse to look  ·  Tab hides prose"
         text = self.muted_style.font.render(hint, True, MUTED)
         surface.blit(text, (MARGIN, self.size[1] - PANEL_HEIGHT - 26))

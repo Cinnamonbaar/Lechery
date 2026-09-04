@@ -1,10 +1,13 @@
-"""Carving a Layout into a walkable TileMap.
+"""Carving one room into its own tilemap.
 
-Each layout node becomes a rectangular block of floor, placed at its grid
-position times a fixed pitch. Linked nodes get a corridor punched through the
-gap between them. Because the layout is a tree of grid-adjacent nodes, the
-blocks never overlap and the corridors are always axis-aligned -- the two
-properties that make this carver short enough to trust.
+Each room is a screen. A room's map is a walled rectangle with a doorway cut
+into each wall that faces a neighbour, so the map's shape is decided entirely
+by the room's size and which exits it has -- nothing about a room's map
+depends on where its neighbours ended up, which is what makes rooms
+independent enough to generate lazily later.
+
+Rooms that fit the view are framed whole; rooms larger than it scroll. That
+is one carver, not two: the difference lives in the room's authored size.
 """
 
 from __future__ import annotations
@@ -13,180 +16,152 @@ import random
 from dataclasses import dataclass
 from typing import Optional
 
-from ..generation.layout import Layout, Node
+from ..world.direction import Direction, as_key
+from ..world.room import Room
 from .tiles import Tile, TileMap
+
+#: Tile size of a room that fills one screen, walls included.
+DEFAULT_ROOM_SIZE = (27, 17)
+
+#: Compass directions can be cut into a wall; anything else (an "up", a
+#: "scramble down") is not a wall direction and becomes a portal instead.
+WALL_DIRECTIONS = (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST)
 
 
 @dataclass(frozen=True)
-class CarveStyle:
-    """Tile dimensions of the carved floorplan."""
+class Doorway:
+    """A gap in a room's wall leading to another room."""
 
-    #: Interior size of a room block, excluding its wall ring.
-    room_size: tuple[int, int] = (13, 11)
-
-    #: Variation in interior size, so rooms are not uniform.
-    size_jitter: int = 4
-
-    #: Tiles of dead space between adjacent room blocks; the corridor runs
-    #: through it. Two, because one leaves rooms sharing a wall and reads as
-    #: a single large room rather than two.
-    gap: int = 5
-
-    #: Width of the corridor and its doorway.
-    door_width: int = 3
-
-    #: Border of VOID kept around the whole map.
-    margin: int = 1
+    direction: Direction
+    #: The threshold tile at the centre of the gap, in room tile space.
+    tile: tuple[int, int]
+    target_room_id: str
+    #: Every tile of the gap. A doorway triggers on a body *overlapping*
+    #: one of these rather than centring on it, so the transition fires as
+    #: the player reaches the threshold instead of after they have pressed
+    #: into the void beyond it.
+    cells: tuple[tuple[int, int], ...] = ()
+    width: int = 3
 
     @property
-    def pitch(self) -> tuple[int, int]:
-        """Distance between the origins of two adjacent room blocks."""
-        return (
-            self.room_size[0] + 2 + self.gap,
-            self.room_size[1] + 2 + self.gap,
-        )
+    def key(self) -> str:
+        return self.direction.value
+
+    def spawn_tile(self, inset: int = 2) -> tuple[int, int]:
+        """Where an arriving player stands: inside the room, off the door.
+
+        Landing on the threshold itself would re-trigger the transition and
+        bounce the player back where they came from.
+        """
+        x, y = self.tile
+        dx, dy = _INWARD[self.direction]
+        return (x + dx * inset, y + dy * inset)
+
+
+#: Which way is "into the room" from a doorway in each wall.
+_INWARD = {
+    Direction.NORTH: (0, 1),
+    Direction.SOUTH: (0, -1),
+    Direction.EAST: (-1, 0),
+    Direction.WEST: (1, 0),
+}
 
 
 @dataclass
-class RoomBlock:
-    """Where one layout node ended up in tile space."""
+class RoomMap:
+    """One room's floorplan."""
 
-    node_id: str
     room_id: str
-    #: Interior rect, excluding walls: (x, y, width, height).
-    rect: tuple[int, int, int, int]
+    tilemap: TileMap
+    doorways: dict[str, Doorway]
+
+    @property
+    def size(self) -> tuple[int, int]:
+        return (self.tilemap.width, self.tilemap.height)
 
     @property
     def center(self) -> tuple[int, int]:
-        x, y, w, h = self.rect
-        return (x + w // 2, y + h // 2)
+        return (self.tilemap.width // 2, self.tilemap.height // 2)
 
-    def contains(self, x: int, y: int) -> bool:
-        rx, ry, rw, rh = self.rect
-        return rx <= x < rx + rw and ry <= y < ry + rh
+    def doorway_touching(
+        self, position: tuple[float, float], half_extents: tuple[float, float]
+    ) -> Optional[Doorway]:
+        """The doorway a body at `position` is standing in, if any.
+
+        Overlap rather than containment, so the transition fires the moment
+        the player reaches the threshold rather than once their centre is
+        over it -- the room beyond is not carved into this map, so pressing
+        further just grinds against the void.
+        """
+        x, y = position
+        hx, hy = half_extents
+        left, right = int(x - hx), int(x + hx)
+        top, bottom = int(y - hy), int(y + hy)
+        for doorway in self.doorways.values():
+            for cx, cy in doorway.cells:
+                if left <= cx <= right and top <= cy <= bottom:
+                    return doorway
+        return None
 
 
-def carve(
-    layout: Layout,
+def carve_room(
+    room: Room,
     *,
-    area_id: str,
-    style: Optional[CarveStyle] = None,
+    default_size: tuple[int, int] = DEFAULT_ROOM_SIZE,
+    door_width: int = 3,
     rng: Optional[random.Random] = None,
-) -> tuple[TileMap, dict[str, RoomBlock]]:
-    """Build a tilemap for `layout`. Returns the map and its room blocks."""
-    style = style or CarveStyle()
+) -> RoomMap:
+    """Build the tilemap for a single room, doorways and all."""
     rng = rng or random.Random()
+    width, height = room.size or default_size
 
-    min_x, min_y, max_x, max_y = layout.bounds
-    pitch_x, pitch_y = style.pitch
-    # The last column and row need no trailing gap, hence the subtraction;
-    # without it every map carries a strip of dead space on two sides.
-    width = (max_x - min_x + 1) * pitch_x - style.gap + style.margin * 2
-    height = (max_y - min_y + 1) * pitch_y - style.gap + style.margin * 2
-    tilemap = TileMap(width, height)
+    tilemap = TileMap(width, height, Tile.VOID)
+    tilemap.fill_rect(1, 1, width - 2, height - 2, Tile.FLOOR, room.id)
+    tilemap.outline_rect(0, 0, width, height, Tile.WALL, room.id)
 
-    blocks: dict[str, RoomBlock] = {}
-    for node in layout:
-        blocks[node.id] = _carve_room(tilemap, node, area_id, style, rng, (min_x, min_y))
+    doorways: dict[str, Doorway] = {}
+    for direction in WALL_DIRECTIONS:
+        exit_ = room.exit_for(direction)
+        if exit_ is None:
+            continue
+        doorway = _cut_doorway(tilemap, direction, exit_.target, door_width, room.id)
+        doorways[as_key(direction)] = doorway
 
-    # Corridors are carved after every room, so a corridor can safely punch
-    # through a wall that a later room would otherwise have drawn back in.
-    carved: set[frozenset[str]] = set()
-    for node in layout:
-        for neighbour in layout.neighbours(node):
-            edge = frozenset({node.id, neighbour.id})
-            if edge in carved:
-                continue
-            carved.add(edge)
-            _carve_corridor(tilemap, blocks[node.id], blocks[neighbour.id], area_id, style)
-
-    return tilemap, blocks
+    return RoomMap(room_id=room.id, tilemap=tilemap, doorways=doorways)
 
 
-def _carve_room(
+def _cut_doorway(
     tilemap: TileMap,
-    node: Node,
-    area_id: str,
-    style: CarveStyle,
-    rng: random.Random,
-    origin: tuple[int, int],
-) -> RoomBlock:
-    pitch_x, pitch_y = style.pitch
-    base_x = (node.position[0] - origin[0]) * pitch_x + style.margin
-    base_y = (node.position[1] - origin[1]) * pitch_y + style.margin
+    direction: Direction,
+    target_room_id: str,
+    width: int,
+    room_id: str,
+) -> Doorway:
+    """Cut a gap of `width` tiles into the middle of one wall."""
+    half = width // 2
+    mid_x = tilemap.width // 2
+    mid_y = tilemap.height // 2
 
-    # Jitter shrinks a room from its maximum and re-centres it in its cell,
-    # so blocks stay inside their pitch and corridors still line up.
-    max_w, max_h = style.room_size
-    width = max_w - rng.randrange(0, style.size_jitter + 1)
-    height = max_h - rng.randrange(0, style.size_jitter + 1)
-    x = base_x + 1 + (max_w - width) // 2
-    y = base_y + 1 + (max_h - height) // 2
+    if direction is Direction.NORTH:
+        tile = (mid_x, 0)
+        cells = [(mid_x + offset, 0) for offset in range(-half, half + 1)]
+    elif direction is Direction.SOUTH:
+        tile = (mid_x, tilemap.height - 1)
+        cells = [(mid_x + offset, tilemap.height - 1) for offset in range(-half, half + 1)]
+    elif direction is Direction.WEST:
+        tile = (0, mid_y)
+        cells = [(0, mid_y + offset) for offset in range(-half, half + 1)]
+    else:
+        tile = (tilemap.width - 1, mid_y)
+        cells = [(tilemap.width - 1, mid_y + offset) for offset in range(-half, half + 1)]
 
-    room_id = f"{area_id}:{node.id}"
-    tilemap.outline_rect(x - 1, y - 1, width + 2, height + 2, Tile.WALL, room_id)
-    tilemap.fill_rect(x, y, width, height, Tile.FLOOR, room_id)
-    return RoomBlock(node_id=node.id, room_id=room_id, rect=(x, y, width, height))
+    for x, y in cells:
+        tilemap.set(x, y, Tile.DOORWAY, room_id)
 
-
-def _carve_corridor(
-    tilemap: TileMap,
-    a: RoomBlock,
-    b: RoomBlock,
-    area_id: str,
-    style: CarveStyle,
-) -> None:
-    """Punch an L-free straight corridor between two adjacent blocks.
-
-    The blocks are grid neighbours, so they are either side by side or one
-    above the other; the corridor runs along the axis they differ on, at the
-    midpoint of their overlap on the other axis.
-    """
-    ax, ay, aw, ah = a.rect
-    bx, by, bw, bh = b.rect
-    half = style.door_width // 2
-
-    if ax + aw <= bx or bx + bw <= ax:  # horizontally separated
-        left, right = (a, b) if ax < bx else (b, a)
-        lx, ly, lw, lh = left.rect
-        rx, ry, rw, rh = right.rect
-        # Centre the corridor on the rooms' shared vertical span.
-        low = max(ly, ry)
-        high = min(ly + lh, ry + rh)
-        centre = (low + high) // 2
-        for x in range(lx + lw - 1, rx + 1):
-            for offset in range(-half, half + 1):
-                tile = Tile.DOORWAY if x in (lx + lw - 1, rx) else Tile.FLOOR
-                room = left.room_id if x < (lx + lw + rx) // 2 else right.room_id
-                tilemap.set(x, centre + offset, tile, room)
-        _wall_around_corridor(tilemap, range(lx + lw - 1, rx + 1), centre, half, area_id, horizontal=True)
-    else:  # vertically separated
-        top, bottom = (a, b) if ay < by else (b, a)
-        tx, ty, tw, th = top.rect
-        bx2, by2, bw2, bh2 = bottom.rect
-        low = max(tx, bx2)
-        high = min(tx + tw, bx2 + bw2)
-        centre = (low + high) // 2
-        for y in range(ty + th - 1, by2 + 1):
-            for offset in range(-half, half + 1):
-                tile = Tile.DOORWAY if y in (ty + th - 1, by2) else Tile.FLOOR
-                room = top.room_id if y < (ty + th + by2) // 2 else bottom.room_id
-                tilemap.set(centre + offset, y, tile, room)
-        _wall_around_corridor(tilemap, range(ty + th - 1, by2 + 1), centre, half, area_id, horizontal=False)
-
-
-def _wall_around_corridor(
-    tilemap: TileMap,
-    span: range,
-    centre: int,
-    half: int,
-    area_id: str,
-    *,
-    horizontal: bool,
-) -> None:
-    """Line the corridor so it does not open onto the void."""
-    for along in span:
-        for side in (-half - 1, half + 1):
-            x, y = (along, centre + side) if horizontal else (centre + side, along)
-            if tilemap.get(x, y) is Tile.VOID:
-                tilemap.set(x, y, Tile.WALL)
+    return Doorway(
+        direction=direction,
+        tile=tile,
+        target_room_id=target_room_id,
+        cells=tuple(cells),
+        width=width,
+    )

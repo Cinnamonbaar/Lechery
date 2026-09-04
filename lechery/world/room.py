@@ -38,6 +38,11 @@ class Room:
     #: What this room is for. Set by the generator, or by hand.
     role: Role = Role.PASSAGE
 
+    #: Tile dimensions of this room's map, walls included. None takes the
+    #: area's default. A room larger than the screen scrolls; one that fits
+    #: is framed whole with a fixed camera.
+    size: Optional[tuple[int, int]] = None
+
     #: Grid position within its area, when it has one. Used by layout
     #: generation and by any future map screen; None for rooms placed by
     #: hand without a coordinate.

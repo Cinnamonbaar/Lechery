@@ -41,6 +41,11 @@ class RoomTemplate:
 
     tags: frozenset[str] = frozenset()
 
+    #: Tile size of the room's map, walls included. None uses the area
+    #: default. This is how a town is authored as a big scrolling space
+    #: while a dungeon room stays a single framed screen.
+    size: Optional[tuple[int, int]] = None
+
     #: Builds a Room subclass when a plain Room will not do.
     factory: Optional[RoomFactory] = field(default=None, repr=False)
 
@@ -53,6 +58,7 @@ class RoomTemplate:
             id=room_id, name=self.name, description=description
         )
         room.role = role
+        room.size = self.size
         room.tags.update(self.tags)
         room.flags.setdefault("template", self.id)
         return room

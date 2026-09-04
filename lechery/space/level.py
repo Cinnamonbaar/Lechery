@@ -1,8 +1,8 @@
-"""Levels: an Area plus the floorplan it was carved into.
+"""Levels: an Area plus the floorplan of each of its rooms.
 
 The Area answers "what is this room, and what is it for". The Level answers
-"where is it, and can I walk there". Keeping them apart means area content
-can be authored and tested without any geometry at all.
+"what does it look like underfoot, and where are its doors". Keeping them
+apart means area content can be authored and tested with no geometry at all.
 """
 
 from __future__ import annotations
@@ -11,19 +11,18 @@ import random
 from dataclasses import dataclass, field
 from typing import Optional
 
-from ..generation.layout import Layout
 from ..world.area import Area
-from .carve import CarveStyle, RoomBlock, carve
-from .tiles import TileMap
+from ..world.direction import Direction
+from .carve import DEFAULT_ROOM_SIZE, Doorway, RoomMap, carve_room
 
 
 @dataclass(frozen=True)
 class Portal:
-    """A tile that moves the player to another area when stepped on.
+    """A tile that moves the player elsewhere when stepped on.
 
-    Cross-area travel needs a physical thing to walk into now that exits are
-    not buttons. A portal is that thing: the stair up out of the dungeon, the
-    town gate. It carries a destination room id, which the World resolves.
+    Doorways handle the four compass walls. A portal handles everything that
+    is not a wall direction -- a stair up out of the dungeon, a ladder down.
+    Without it, an area could be joined logically but not on foot.
     """
 
     tile: tuple[int, int]
@@ -34,9 +33,9 @@ class Portal:
 @dataclass
 class Level:
     area: Area
-    tilemap: TileMap
-    blocks: dict[str, RoomBlock] = field(default_factory=dict)
-    portals: dict[tuple[int, int], Portal] = field(default_factory=dict)
+    maps: dict[str, RoomMap] = field(default_factory=dict)
+    #: Portals per room id, keyed by the tile they occupy.
+    portals: dict[str, dict[tuple[int, int], Portal]] = field(default_factory=dict)
 
     @property
     def id(self) -> str:
@@ -44,33 +43,53 @@ class Level:
 
     # -- queries ----------------------------------------------------------
 
-    def room_id_at(self, position: tuple[float, float]) -> Optional[str]:
-        return self.tilemap.room_at(int(position[0]), int(position[1]))
+    def map_for(self, room_id: str) -> RoomMap:
+        try:
+            return self.maps[room_id]
+        except KeyError:
+            raise KeyError(f"No carved map for room {room_id!r}") from None
 
-    def portal_at(self, position: tuple[float, float]) -> Optional[Portal]:
-        return self.portals.get((int(position[0]), int(position[1])))
+    def portal_at(self, room_id: str, position: tuple[float, float]) -> Optional[Portal]:
+        return self.portals.get(room_id, {}).get((int(position[0]), int(position[1])))
 
-    def spawn_in(self, room_id: str) -> tuple[float, float]:
-        """A walkable point at the centre of a room, in world units."""
-        block = self.blocks[room_id]
-        x, y = block.center
+    def spawn_center(self, room_id: str) -> tuple[float, float]:
+        x, y = self.map_for(room_id).center
+        return (x + 0.5, y + 0.5)
+
+    def spawn_from(self, room_id: str, arriving_from: Direction) -> tuple[float, float]:
+        """Where to stand on entering `room_id` through a given wall.
+
+        `arriving_from` is the direction of travel, so entering while heading
+        north means coming in through this room's *south* wall.
+        """
+        room_map = self.map_for(room_id)
+        doorway = room_map.doorways.get(arriving_from.opposite.value)
+        if doorway is None:
+            return self.spawn_center(room_id)
+        x, y = doorway.spawn_tile()
         return (x + 0.5, y + 0.5)
 
     def add_portal(self, room_id: str, target_room_id: str, label: str = "") -> Portal:
-        """Place a portal at the centre of `room_id`."""
-        tile = self.blocks[room_id].center
+        """Place a portal at the centre of a room."""
+        tile = self.map_for(room_id).center
         portal = Portal(tile=tile, target_room_id=target_room_id, label=label)
-        self.portals[tile] = portal
+        self.portals.setdefault(room_id, {})[tile] = portal
         return portal
 
 
 def build_level(
     area: Area,
-    layout: Layout,
     *,
-    style: Optional[CarveStyle] = None,
+    default_size: tuple[int, int] = DEFAULT_ROOM_SIZE,
     rng: Optional[random.Random] = None,
 ) -> Level:
-    tilemap, node_blocks = carve(layout, area_id=area.id, style=style, rng=rng)
-    blocks = {block.room_id: block for block in node_blocks.values()}
-    return Level(area=area, tilemap=tilemap, blocks=blocks)
+    """Carve every room in an area.
+
+    Note this takes only the Area: with rooms carved independently, the
+    layout is no longer needed once the exits are wired.
+    """
+    rng = rng or random.Random()
+    level = Level(area=area)
+    for room in area:
+        level.maps[room.id] = carve_room(room, default_size=default_size, rng=rng)
+    return level

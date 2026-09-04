@@ -33,16 +33,20 @@ def new_world(seed: Optional[int] = None) -> tuple[World, dict[str, Level]]:
     world = World(seed=seed)
     levels: dict[str, Level] = {}
 
+    areas = []
     for module in AREA_MODULES:
-        area, layout = module.build(rng_for(seed, module.AREA_ID))
+        area, _layout = module.build(rng_for(seed, module.AREA_ID))
         world.add_area(area)
-        # A separate stream for carving, so tuning room sizes cannot
-        # reshuffle which rooms the layout generated.
-        levels[area.id] = build_level(
-            area, layout, rng=rng_for(seed, f"{module.AREA_ID}:carve")
-        )
+        areas.append(area)
 
+    # Rooms are carved after every area is joined, because a room's doorways
+    # are cut from its exits -- carving earlier would miss the exits that
+    # join one area to the next.
     _join_areas(world, levels)
+    for area in areas:
+        levels[area.id] = build_level(area, rng=rng_for(seed, f"{area.id}:carve"))
+
+    _place_portals(world, levels)
 
     problems = world.validate()
     if problems:
@@ -50,6 +54,22 @@ def new_world(seed: Optional[int] = None) -> tuple[World, dict[str, Level]]:
             "generated an invalid world (seed %d):\n  %s" % (seed, "\n  ".join(problems))
         )
     return world, levels
+
+
+def _place_portals(world: World, levels: dict[str, Level]) -> None:
+    """Give every non-compass link something physical to step on.
+
+    A link the player cannot reach on foot is worse than no link, so the
+    portals are derived from the exits rather than written out by hand:
+    any exit whose key is not a wall direction gets one.
+    """
+    for room in world.rooms:
+        for exit_ in room.exits.values():
+            if exit_.key_str in ("north", "south", "east", "west"):
+                continue
+            levels[room.area_id].add_portal(
+                room.id, exit_.target, label=exit_.display_label
+            )
 
 
 def _join_areas(world: World, levels: dict[str, Level]) -> None:
@@ -66,9 +86,3 @@ def _join_areas(world: World, levels: dict[str, Level]) -> None:
         raise RuntimeError("the starter dungeon and the hub must both be reachable")
 
     dungeon_exit.connect(D.UP, hub_entrance, label="Climb toward the light")
-    levels[tutorial.AREA_ID].add_portal(
-        dungeon_exit.id, hub_entrance.id, label="Climb toward the light"
-    )
-    levels[plains.AREA_ID].add_portal(
-        hub_entrance.id, dungeon_exit.id, label="Back down into the dark"
-    )

@@ -54,6 +54,7 @@ def template_pool() -> TemplatePool:
             RoomTemplate(
                 id="plains_crossroads",
                 name="The Crossroads",
+                size=(37, 23),
                 tags=frozenset({"outdoors", "safe"}),
                 descriptions=(
                     "Two cart tracks meet in the grass and a leaning post "
@@ -86,6 +87,10 @@ def template_pool() -> TemplatePool:
                 id="town_square",
                 name="Market Square",
                 roles=frozenset({Role.HAVEN}),
+                # Larger than the screen on purpose: the town is where the
+                # camera stops framing a room and starts following the
+                # player. Everything else about it carves identically.
+                size=(49, 33),
                 tags=frozenset({"indoors", "safe", "town"}),
                 descriptions=(
                     "Stalls, a well, and a good deal of noise. People here "

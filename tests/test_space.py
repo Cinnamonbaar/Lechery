@@ -8,10 +8,10 @@ import pytest
 from lechery.content.areas import plains, tutorial
 from lechery.content.game import new_world
 from lechery.entities.actor import Actor, Player
-from lechery.generation import DungeonShape, generate_dungeon
 from lechery.session import Session
-from lechery.space import Tile, TileMap, carve, move_and_collide, overlaps_solid
-from lechery.world import Role
+from lechery.space import Tile, TileMap, carve_room, move_and_collide, overlaps_solid
+from lechery.ui.camera import offset_for
+from lechery.world import Direction as D, Role, Room
 
 SEEDS = list(range(12))
 
@@ -100,65 +100,104 @@ def test_zero_input_does_not_move_or_turn():
 # -- carving --------------------------------------------------------------
 
 
-@pytest.mark.parametrize("seed", SEEDS)
-def test_every_carved_room_is_walkable_and_tagged(seed):
-    layout = generate_dungeon(rng=random.Random(seed))
-    tilemap, blocks = carve(layout, area_id="t", rng=random.Random(seed))
-    for block in blocks.values():
-        x, y = block.center
-        assert tilemap.is_walkable(x, y)
-        assert tilemap.room_at(x, y) is not None
+def a_room(room_id="a:room", size=(21, 15), exits=()):
+    room = Room(id=room_id, name="Room", size=size)
+    for direction, target in exits:
+        room.link(direction, target)
+    return room
 
 
-@pytest.mark.parametrize("seed", SEEDS)
-def test_the_whole_carved_floorplan_is_one_connected_space(seed):
-    """A carved map must be walkable end to end, or a room is stranded.
+def test_a_carved_room_is_walled_with_a_walkable_interior():
+    room_map = carve_room(a_room())
+    tilemap = room_map.tilemap
+    assert tilemap.is_solid(0, 0)
+    assert tilemap.is_walkable(10, 7)
+    assert tilemap.room_at(10, 7) == "a:room"
 
-    The layout being connected does not prove the tilemap is: a corridor can
-    fail to punch through. This walks the actual floor tiles.
+
+def test_a_room_gets_one_doorway_per_compass_exit():
+    room_map = carve_room(a_room(exits=[(D.NORTH, "a:n"), (D.WEST, "a:w")]))
+    assert set(room_map.doorways) == {"north", "west"}
+    assert room_map.doorways["north"].target_room_id == "a:n"
+
+
+def test_non_compass_exits_do_not_become_doorways():
+    """An "up" is not a wall; it needs a portal, which the world places."""
+    room_map = carve_room(a_room(exits=[(D.UP, "b:elsewhere"), ("crawl", "a:x")]))
+    assert room_map.doorways == {}
+
+
+def test_doorways_are_cut_through_the_wall():
+    room_map = carve_room(a_room(exits=[(D.NORTH, "a:n")]))
+    door = room_map.doorways["north"]
+    assert room_map.tilemap.get(*door.tile) is Tile.DOORWAY
+    for cell in door.cells:
+        assert room_map.tilemap.is_walkable(*cell)
+
+
+def test_walking_into_a_doorway_registers_before_the_body_stops():
+    """The transition must fire on reaching the threshold.
+
+    A body walking at a doorway grinds to a halt against the void beyond
+    it. Detecting the door only once the body has centred on the tile would
+    mean the player visibly stops in the gap first.
     """
-    layout = generate_dungeon(rng=random.Random(seed))
-    tilemap, blocks = carve(layout, area_id="t", rng=random.Random(seed))
+    room_map = carve_room(a_room(exits=[(D.WEST, "a:w")]))
+    half = (0.28, 0.28)
+    tilemap = room_map.tilemap
+    actor = Actor(position=(5.0, room_map.center[1] + 0.5), speed=30.0, half_extents=half)
+    touched_at = None
+    for _ in range(120):
+        actor.move(tilemap, (-1, 0), 1 / 60)
+        if touched_at is None and room_map.doorway_touching(actor.position, half):
+            touched_at = actor.position[0]
 
-    start = next(iter(blocks.values())).center
-    seen = {start}
-    frontier = deque([start])
-    while frontier:
-        x, y = frontier.popleft()
-        for step in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            neighbour = (x + step[0], y + step[1])
-            if neighbour not in seen and tilemap.is_walkable(*neighbour):
-                seen.add(neighbour)
-                frontier.append(neighbour)
-
-    for block in blocks.values():
-        assert block.center in seen, f"{block.room_id} is walled off"
+    assert touched_at is not None, "the doorway was never registered"
+    # Registers as the leading edge crosses into the door tile (centre at
+    # 1.0 with a 0.28 half-width), not once the centre is over it at 0.5.
+    assert touched_at >= 1.0
 
 
-@pytest.mark.parametrize("seed", SEEDS)
-def test_rooms_never_overlap_in_tile_space(seed):
-    layout = generate_dungeon(rng=random.Random(seed))
-    _, blocks = carve(layout, area_id="t", rng=random.Random(seed))
-    claimed: set[tuple[int, int]] = set()
-    for block in blocks.values():
-        x, y, w, h = block.rect
-        cells = {(cx, cy) for cy in range(y, y + h) for cx in range(x, x + w)}
-        assert not (cells & claimed), f"{block.room_id} overlaps another room"
-        claimed |= cells
+def test_spawn_tile_is_inside_the_room_not_on_the_threshold():
+    room_map = carve_room(a_room(exits=[(D.NORTH, "a:n"), (D.SOUTH, "a:s")]))
+    half = (0.28, 0.28)
+    for door in room_map.doorways.values():
+        x, y = door.spawn_tile()
+        assert room_map.tilemap.is_walkable(x, y)
+        assert room_map.doorway_touching((x + 0.5, y + 0.5), half) is None
 
 
-def test_carving_is_deterministic_for_a_seed():
-    layout = generate_dungeon(rng=random.Random(4))
-    first, _ = carve(layout, area_id="t", rng=random.Random(4))
-    second, _ = carve(layout, area_id="t", rng=random.Random(4))
-    assert str(first) == str(second)
+def test_a_room_larger_than_the_default_carves_at_its_authored_size():
+    assert carve_room(a_room(size=(49, 33))).size == (49, 33)
 
 
-def test_a_single_room_layout_carves_cleanly():
-    layout = generate_dungeon(DungeonShape(critical_path=(1, 1), branches=(0, 0)), random.Random(0))
-    tilemap, blocks = carve(layout, area_id="t", rng=random.Random(0))
-    assert len(blocks) == 1
-    assert tilemap.count(Tile.FLOOR) > 0
+# -- camera ---------------------------------------------------------------
+
+
+def test_a_room_that_fits_is_framed_and_still():
+    window, scale = (1024, 720), 34
+    small = (27, 17)
+    first = offset_for(small, (3.0, 3.0), window, scale)
+    second = offset_for(small, (20.0, 12.0), window, scale)
+    assert first == second, "camera must not move in a framed room"
+
+
+def test_a_room_larger_than_the_window_follows_the_player():
+    window, scale = (1024, 720), 34
+    big = (60, 40)
+    near = offset_for(big, (10.0, 20.0), window, scale)
+    far = offset_for(big, (40.0, 20.0), window, scale)
+    assert far[0] < near[0]
+
+
+def test_the_camera_never_shows_past_a_large_room_edge():
+    window, scale = (1024, 720), 34
+    big = (60, 40)
+    for pos in [(0.0, 0.0), (59.0, 39.0), (30.0, 20.0)]:
+        ox, oy = offset_for(big, pos, window, scale)
+        assert ox <= 0 and oy <= 0
+        assert ox >= window[0] - big[0] * scale
+        assert oy >= window[1] - big[1] * scale
 
 
 # -- session --------------------------------------------------------------
@@ -169,17 +208,48 @@ def test_session_spawns_the_player_in_the_entrance_room():
     assert session.room.role is Role.ENTRANCE
     assert session.level.id == tutorial.AREA_ID
     assert not overlaps_solid(
-        session.level.tilemap, session.player.position, session.player.half_extents
+        session.room_map.tilemap, session.player.position, session.player.half_extents
     )
 
 
-def test_walking_into_the_next_room_fires_the_room_change():
+def test_walking_into_a_doorway_moves_the_player_to_the_next_room():
     session = Session.new_game(1234)
     start = session.room.id
-    for _ in range(150):
-        session.update((-1, 0), 1 / 60)
-    assert session.player.room_id != start
-    assert session.room.id == session.player.room_id
+    door = next(iter(session.room_map.doorways.values()))
+
+    heading = {"north": (0, -1), "south": (0, 1), "east": (1, 0), "west": (-1, 0)}[door.key]
+    for _ in range(300):
+        session.update(heading, 1 / 60)
+        if session.player.room_id != start:
+            break
+
+    assert session.player.room_id == door.target_room_id
+    assert not overlaps_solid(
+        session.room_map.tilemap, session.player.position, session.player.half_extents
+    )
+
+
+def test_arriving_does_not_immediately_bounce_back():
+    """Spawning on the far threshold would ping-pong the player forever."""
+    session = Session.new_game(1234)
+    door = next(iter(session.room_map.doorways.values()))
+    session.enter_room(door.target_room_id, arriving_from=door.direction)
+    landed = session.player.room_id
+    session.update((0, 0), 1 / 60)
+    assert session.player.room_id == landed
+
+
+def test_entering_by_a_wall_puts_the_player_at_the_matching_door():
+    session = Session.new_game(1234)
+    door = next(iter(session.room_map.doorways.values()))
+    target = door.target_room_id
+    session.enter_room(target, arriving_from=door.direction)
+
+    back = session.room_map.doorways.get(door.direction.opposite.value)
+    assert back is not None, "the return door should exist"
+    x, y = session.player.position
+    assert abs(x - (back.spawn_tile()[0] + 0.5)) < 1e-6
+    assert abs(y - (back.spawn_tile()[1] + 0.5)) < 1e-6
 
 
 def test_stepping_on_a_portal_moves_the_player_to_the_other_area():
@@ -187,45 +257,58 @@ def test_stepping_on_a_portal_moves_the_player_to_the_other_area():
     session = Session(world, levels, Player())
     dungeon_exit = world.area(tutorial.AREA_ID).first_with_role(Role.EXIT)
 
-    session.travel_to(dungeon_exit.id)  # stands on the portal tile
+    session.travel_to(dungeon_exit.id)  # portals sit at room centre
     session.update((0, 0), 1 / 60)
 
     assert session.level.id == plains.AREA_ID
     assert session.world.area_of(session.room).id == plains.AREA_ID
 
 
-@pytest.mark.parametrize("seed", range(6))
-def test_the_player_can_physically_walk_the_whole_dungeon(seed):
-    """Reachability in tile space, not just in the room graph.
+@pytest.mark.parametrize("seed", range(8))
+def test_every_room_is_reachable_on_foot_through_doorways(seed):
+    """Walk the door graph as carved, not the exit graph as authored.
 
-    The generator guarantees a connected layout, but a bad carve could still
-    seal a room off. This is the check that would catch it.
+    The layout being connected does not prove the carved rooms are: a
+    doorway could fail to be cut, or point at the wrong room.
     """
     world, levels = new_world(seed)
     level = levels[tutorial.AREA_ID]
-    tilemap = level.tilemap
-    start = level.blocks[world.area(tutorial.AREA_ID).entry_room.id].center
+    start = world.area(tutorial.AREA_ID).entry_room.id
 
     seen = {start}
     frontier = deque([start])
     while frontier:
-        x, y = frontier.popleft()
-        for step in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            neighbour = (x + step[0], y + step[1])
-            if neighbour not in seen and tilemap.is_walkable(*neighbour):
-                seen.add(neighbour)
-                frontier.append(neighbour)
+        room_id = frontier.popleft()
+        for door in level.map_for(room_id).doorways.values():
+            if door.target_room_id not in seen:
+                seen.add(door.target_room_id)
+                frontier.append(door.target_room_id)
 
-    for room_id, block in level.blocks.items():
-        assert block.center in seen, f"{room_id} cannot be reached on foot"
+    assert seen == set(level.maps), "some rooms cannot be walked to"
 
 
-@pytest.mark.parametrize("seed", range(6))
+@pytest.mark.parametrize("seed", range(8))
+def test_every_doorway_has_a_matching_door_coming_back(seed):
+    """A one-way door would strand the player; exits are made in pairs."""
+    world, levels = new_world(seed)
+    for level in levels.values():
+        for room_id, room_map in level.maps.items():
+            for door in room_map.doorways.values():
+                back = level.map_for(door.target_room_id).doorways.get(
+                    door.direction.opposite.value
+                )
+                assert back is not None and back.target_room_id == room_id
+
+
+@pytest.mark.parametrize("seed", range(8))
 def test_both_ends_of_every_portal_are_standable(seed):
     world, levels = new_world(seed)
     for level in levels.values():
-        for portal in level.portals.values():
-            assert level.tilemap.is_walkable(*portal.tile)
-            target = world.room(portal.target_room_id)
-            other = levels[target.area_id]
-            assert other.tilemap.is_walkable(*other.blocks[target.id].center)
+        for room_id, portals in level.portals.items():
+            for portal in portals.values():
+                assert level.map_for(room_id).tilemap.is_walkable(*portal.tile)
+                target = world.room(portal.target_room_id)
+                other = levels[target.area_id]
+                assert other.map_for(target.id).tilemap.is_walkable(
+                    *other.map_for(target.id).center
+                )

@@ -65,7 +65,14 @@ def main(argv: list[str]) -> int:
         if only and area.id != only:
             continue
         print(f"\n{area.name}  ({len(area)} rooms)")
-        print(str(levels[area.id].tilemap) if floorplan else dump(world, area.id))
+        if floorplan:
+            for room in area:
+                room_map = levels[area.id].map_for(room.id)
+                doors = ", ".join(sorted(room_map.doorways)) or "none"
+                print(f"\n  {room.name}  [{room.role}]  doors: {doors}")
+                print(room_map.tilemap)
+        else:
+            print(dump(world, area.id))
     print("\n" + "  ".join(f"{g} {r.value}" for r, g in GLYPHS.items()))
     return 0
 
