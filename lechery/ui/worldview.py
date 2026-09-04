@@ -7,6 +7,8 @@ else, which is what lets the zoom change without touching the physics.
 
 from __future__ import annotations
 
+import math
+
 import pygame
 
 from ..session import Session
@@ -43,19 +45,16 @@ class WorldView:
 
     # -- input ------------------------------------------------------------
 
-    def update(self, dt: float) -> None:
-        keys = pygame.key.get_pressed()
-        direction = (
-            (keys[pygame.K_d] or keys[pygame.K_RIGHT]) - (keys[pygame.K_a] or keys[pygame.K_LEFT]),
-            (keys[pygame.K_s] or keys[pygame.K_DOWN]) - (keys[pygame.K_w] or keys[pygame.K_UP]),
-        )
+    def update(self, direction: tuple[float, float], dt: float, aim_at_mouse: bool = True) -> None:
         self.session.update(direction, dt)
-        self._aim_at_mouse()
+        if aim_at_mouse:
+            self._aim_at_mouse()
+        elif direction != (0.0, 0.0):
+            # Without a cursor, the body faces where it is going.
+            self.session.player.facing = math.atan2(direction[1], direction[0])
 
     def _aim_at_mouse(self) -> None:
         """Facing follows the cursor, independent of movement."""
-        import math
-
         mx, my = pygame.mouse.get_pos()
         ox, oy = self.camera_offset()
         px, py = self.session.player.position

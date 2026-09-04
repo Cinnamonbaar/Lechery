@@ -7,6 +7,7 @@ import sys
 import pygame
 
 from lechery.session import Session
+from lechery.settings import Settings
 from lechery.ui.app import App
 
 SIZE = (1280, 760)
@@ -22,7 +23,7 @@ def main(argv: list[str]) -> int:
     screen = pygame.display.set_mode(SIZE, pygame.RESIZABLE)
     clock = pygame.time.Clock()
 
-    app = App(session, SIZE)
+    app = App(session, SIZE, Settings.load())
     running = True
     while running:
         # Clamped so a hitch cannot tunnel the player through a wall.
