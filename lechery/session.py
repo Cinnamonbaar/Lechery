@@ -11,6 +11,7 @@ from typing import Optional
 
 from .content.game import START_AREA, new_world
 from .entities.actor import Player
+from .log import Kind, MessageLog
 from .space import Level, RoomMap
 from .world import Direction, Room, World
 
@@ -18,16 +19,12 @@ from .world import Direction, Room, World
 class Session:
     """One playthrough."""
 
-    #: How many log lines to keep. A scratch buffer for the UI, not a
-    #: transcript; a real history buffer belongs in the text layer.
-    LOG_LIMIT = 6
-
     def __init__(self, world: World, levels: dict[str, Level], player: Player) -> None:
         self.world = world
         self.levels = levels
         self.player = player
         self.level = levels[START_AREA]
-        self.log: list[str] = []
+        self.log = MessageLog()
 
         start = self.world.area(START_AREA).entry_room
         self._arrive(start.id)
@@ -87,21 +84,33 @@ class Session:
             raise ValueError(f"Room {room_id!r} belongs to no area")
 
         changed_area = room.area_id != self.level.id
+        if changed_area:
+            area = self.world.area_of(room)
+            if area is not None:
+                self.log.system(area.name)
         self.level = self.levels[room.area_id]
         self._arrive(room_id)
         self.player.position = self.level.spawn_center(room_id)
-        if changed_area:
-            area = self.world.area_of(room)
-            self.say(f"-- {area.name} --")
 
     def _arrive(self, room_id: str) -> None:
+        """Enter a room, and narrate it.
+
+        The name is logged every time, so scrollback reads as a route. The
+        prose only on a first visit: repeating a paragraph the player has
+        already read trains them to stop reading the log at all.
+        """
         room = self.world.room(room_id)
         first_time = room_id not in self.player.seen_rooms
         self.player.room_id = room_id
         self.player.seen_rooms.add(room_id)
         self.world.place(room, self.player)
-        if first_time and room.name:
-            self.say(room.name)
+
+        if room.name:
+            self.log.title(room.name)
+        if first_time:
+            description = room.describe(self.player)
+            if description:
+                self.log.prose(description)
 
     # -- state ------------------------------------------------------------
 
@@ -109,6 +118,5 @@ class Session:
     def room(self) -> Optional[Room]:
         return self.world.current_room
 
-    def say(self, line: str) -> None:
-        self.log.append(line)
-        del self.log[: -self.LOG_LIMIT]
+    def say(self, line: str, kind: Kind = Kind.EVENT) -> None:
+        self.log.add(line, kind)

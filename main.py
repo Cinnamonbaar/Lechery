@@ -7,9 +7,9 @@ import sys
 import pygame
 
 from lechery.session import Session
-from lechery.ui.worldview import WorldView
+from lechery.ui.app import App
 
-SIZE = (1024, 720)
+SIZE = (1280, 760)
 FPS = 60
 
 
@@ -19,13 +19,13 @@ def main(argv: list[str]) -> int:
 
     pygame.init()
     pygame.display.set_caption("Lechery")
-    screen = pygame.display.set_mode(SIZE)
+    screen = pygame.display.set_mode(SIZE, pygame.RESIZABLE)
     clock = pygame.time.Clock()
 
-    view = WorldView(session, SIZE)
+    app = App(session, SIZE)
     running = True
     while running:
-        # Clamped so that a hitch cannot tunnel the player through a wall.
+        # Clamped so a hitch cannot tunnel the player through a wall.
         dt = min(clock.tick(FPS) / 1000.0, 1 / 30)
 
         for event in pygame.event.get():
@@ -34,10 +34,10 @@ def main(argv: list[str]) -> int:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
             else:
-                view.handle_event(event)
+                app.handle_event(event)
 
-        view.update(dt)
-        view.draw(screen)
+        app.update(dt)
+        app.draw(screen)
         pygame.display.flip()
 
     pygame.quit()
