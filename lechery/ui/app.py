@@ -13,6 +13,7 @@ from ..settings import LayoutMode, Settings
 from .layout import Layout, make_layout
 from .logpanel import LogPanel
 from .paperdollpanel import PaperdollPanel
+from .fonts import load as load_font
 from .profile import FormFactor, resolve
 from .text import TextStyle
 from .touch import Thumbstick
@@ -40,9 +41,9 @@ class App:
         self.layout = self._make_layout()
         self.stick = Thumbstick()
 
-        body = TextStyle(pygame.font.SysFont("georgia,serif", 15))
-        heading = TextStyle(pygame.font.SysFont("georgia,serif", 13, bold=True))
-        tab = TextStyle(pygame.font.SysFont("georgia,serif", 12, bold=True))
+        body = TextStyle(load_font("body", 15))
+        heading = TextStyle(load_font("heading", 13, bold=True))
+        tab = TextStyle(load_font("heading", 12, bold=True))
 
         self.paperdoll = PaperdollPanel(session.player, body, tab)
         self.paperdoll.style = heading
@@ -166,6 +167,27 @@ class App:
         self.world.rect = self.layout.center
         direction, aim_at_mouse = self._movement()
         self.world.update(direction, dt, aim_at_mouse=aim_at_mouse)
+
+    # -- the frame --------------------------------------------------------
+
+    def step(self, surface: pygame.Surface, events, dt: float) -> bool:
+        """One whole frame: events, update, draw. Returns whether to keep going.
+
+        The loop that calls this is async under pygbag and plain on the
+        desktop, so the frame itself must contain neither -- keeping it here
+        means the two loops share every line that matters, and this one can
+        be driven synchronously by a test.
+        """
+        for event in events:
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                return False
+            self.handle_event(event)
+
+        self.update(dt)
+        self.draw(surface)
+        return True
 
     # -- drawing ----------------------------------------------------------
 

@@ -14,6 +14,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
+from .platform import data_dir
+
 
 class LayoutMode(Enum):
     """How the screen should be divided.
@@ -29,7 +31,9 @@ class LayoutMode(Enum):
     COMPACT = "compact"
 
 
-DEFAULT_PATH = Path.home() / ".lechery" / "settings.json"
+def default_path() -> Path:
+    """Resolved per call, not at import: the answer differs in the browser."""
+    return data_dir() / "settings.json"
 
 
 @dataclass
@@ -51,7 +55,7 @@ class Settings:
 
     @classmethod
     def load(cls, path: Optional[Path] = None) -> "Settings":
-        path = path or DEFAULT_PATH
+        path = path or default_path()
         try:
             data = json.loads(path.read_text())
         except (OSError, ValueError):
@@ -83,7 +87,7 @@ class Settings:
         A read-only home directory is a reason to lose preferences, not a
         reason to crash mid-game.
         """
-        path = path or self.path or DEFAULT_PATH
+        path = path or self.path or default_path()
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(self.to_dict(), indent=2))

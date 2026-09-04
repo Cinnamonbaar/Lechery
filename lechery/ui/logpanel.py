@@ -10,6 +10,7 @@ from __future__ import annotations
 import pygame
 
 from ..log import Entry, Kind, MessageLog
+from .fonts import load as load_font
 from .panel import PAD, Panel
 from .text import TextStyle, wrap
 
@@ -32,7 +33,7 @@ class LogPanel(Panel):
         super().__init__("Log", style, tab_style)
         self.log = log
         self.title_style = TextStyle(
-            pygame.font.SysFont("georgia,serif", style.font.get_height() - 1, bold=True),
+            load_font("heading", style.font.get_height() - 1, bold=True),
             COLORS[Kind.TITLE],
         )
         self.body_style = style

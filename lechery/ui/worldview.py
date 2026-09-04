@@ -14,6 +14,7 @@ import pygame
 from ..session import Session
 from ..space.tiles import Tile
 from .camera import offset_for
+from .fonts import load as load_font
 from .silhouette import build_silhouette, draw_actor
 from .text import TextStyle
 
@@ -41,7 +42,7 @@ class WorldView:
         self.rect = rect
 
         self.silhouette = build_silhouette(int(SCALE * 0.95))
-        self.muted_style = TextStyle(pygame.font.SysFont("georgia,serif", 15), MUTED)
+        self.muted_style = TextStyle(load_font("body", 15), MUTED)
 
     # -- input ------------------------------------------------------------
 
