@@ -1,4 +1,7 @@
-"""Entry point: open a window and walk around the test map."""
+"""Entry point: open a window and play.
+
+Pass a seed to replay a particular map: `python main.py 1234`.
+"""
 
 from __future__ import annotations
 
@@ -6,20 +9,17 @@ import sys
 
 import pygame
 
-from lechery.content.testmap import build_world
+from lechery.content.game import new_game
 from lechery.ui.roomview import RoomView
 
 SIZE = (900, 620)
 FPS = 60
 
 
-def main() -> int:
-    world = build_world()
-    problems = world.validate()
-    if problems:
-        for problem in problems:
-            print(f"map error: {problem}", file=sys.stderr)
-        return 1
+def main(argv: list[str]) -> int:
+    seed = int(argv[0]) if argv else None
+    world = new_game(seed)
+    print(f"seed: {world.seed}")
 
     pygame.init()
     pygame.display.set_caption("Lechery")
@@ -46,4 +46,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

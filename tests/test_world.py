@@ -2,13 +2,8 @@
 
 import pytest
 
-from lechery.content.testmap import build_world
+from lechery.content.game import new_game
 from lechery.world import Area, Direction as D, Room, World
-
-
-@pytest.fixture
-def world():
-    return build_world()
 
 
 def make_pair():
@@ -50,8 +45,8 @@ def test_duplicate_room_id_across_areas_is_rejected():
         world.add_area(second)
 
 
-def test_demo_map_validates(world):
-    assert world.validate() == []
+def test_assembled_game_world_validates():
+    assert new_game(seed=1).validate() == []
 
 
 def test_validate_reports_dangling_exit():

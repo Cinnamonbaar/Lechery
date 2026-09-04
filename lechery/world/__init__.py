@@ -7,7 +7,8 @@ authority on where things are; the presentation layer only reads it.
 from .area import Area
 from .direction import Direction
 from .exits import Exit
+from .roles import Role
 from .room import Room
 from .world import MoveResult, World
 
-__all__ = ["Area", "Direction", "Exit", "MoveResult", "Room", "World"]
+__all__ = ["Area", "Direction", "Exit", "MoveResult", "Role", "Room", "World"]

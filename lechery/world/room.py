@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable, Iterator, Optional
 
 from .direction import Direction, as_key
 from .exits import Exit, Gate
+from .roles import Role
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .world import World
@@ -33,6 +34,14 @@ class Room:
 
     #: Id of the owning Area, set by `Area.add`.
     area_id: Optional[str] = None
+
+    #: What this room is for. Set by the generator, or by hand.
+    role: Role = Role.PASSAGE
+
+    #: Grid position within its area, when it has one. Used by layout
+    #: generation and by any future map screen; None for rooms placed by
+    #: hand without a coordinate.
+    position: Optional[tuple[int, int]] = None
 
     #: Free-form markers content can query: "indoors", "safe", "water".
     tags: set[str] = field(default_factory=set)

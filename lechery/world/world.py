@@ -37,7 +37,10 @@ class World:
     rooms in any order and reference each other freely.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, seed: Optional[int] = None) -> None:
+        #: The master seed every area's layout was derived from. Kept on the
+        #: world so a save file can record it and rebuild the same map.
+        self.seed = seed
         self.areas: dict[str, Area] = {}
         self._rooms: dict[str, Room] = {}
         self.current_room: Optional[Room] = None

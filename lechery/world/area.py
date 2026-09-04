@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterator, Optional
 
+from .roles import Role
+
 from .room import Room
 
 
@@ -36,7 +38,9 @@ class Area:
             raise ValueError(f"Area {self.id!r} already has a room {room.id!r}")
         room.area_id = self.id
         self.rooms[room.id] = room
-        if self.entry_room_id is None:
+        # An explicit ENTRANCE always wins; otherwise the first room added
+        # is the entry point, which is right for small handmade areas.
+        if self.entry_room_id is None or room.role is Role.ENTRANCE:
             self.entry_room_id = room.id
         return room
 
@@ -49,6 +53,21 @@ class Area:
             return self.rooms[room_id]
         except KeyError:
             raise KeyError(f"No room {room_id!r} in area {self.id!r}") from None
+
+    def rooms_with_role(self, role: Role) -> list[Room]:
+        """Every room in the area serving `role`.
+
+        This is how the rest of the game addresses a generated area: an exit
+        room has no stable id when the layout is random, but it always has a
+        role.
+        """
+        return [room for room in self.rooms.values() if room.role is role]
+
+    def first_with_role(self, role: Role) -> Optional[Room]:
+        for room in self.rooms.values():
+            if room.role is role:
+                return room
+        return None
 
     @property
     def entry_room(self) -> Optional[Room]:
