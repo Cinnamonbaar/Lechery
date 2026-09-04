@@ -8,6 +8,7 @@ from typing import Optional
 
 from ..space.collision import move_and_collide
 from ..space.tiles import TileMap
+from ..traits import Character, default_character
 
 
 @dataclass
@@ -77,6 +78,10 @@ class Player(Actor):
     name: str = "player"
     speed: float = 6.5
     half_extents: tuple[float, float] = (0.28, 0.28)
+
+    #: Who this is and what body they are in. The top-down silhouette
+    #: deliberately reflects none of it; the paperdoll reflects all of it.
+    character: Character = field(default_factory=default_character)
 
     #: Rooms the player has stood in, for map drawing and for prose that
     #: should only fire once.

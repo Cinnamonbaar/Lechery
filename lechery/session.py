@@ -12,6 +12,7 @@ from typing import Optional
 from .content.game import START_AREA, new_world
 from .entities.actor import Player
 from .log import Kind, MessageLog
+from .narration import describe_change
 from .space import Level, RoomMap
 from .world import Direction, Room, World
 
@@ -25,6 +26,10 @@ class Session:
         self.player = player
         self.level = levels[START_AREA]
         self.log = MessageLog()
+
+        # Transformations narrate themselves wherever they are triggered
+        # from, rather than every caller remembering to log.
+        self.player.character.traits.on_change = self._narrate_change
 
         start = self.world.area(START_AREA).entry_room
         self._arrive(start.id)
@@ -111,6 +116,11 @@ class Session:
             description = room.describe(self.player)
             if description:
                 self.log.prose(description)
+
+    def _narrate_change(self, change) -> None:
+        line = describe_change(change, self.player.character)
+        if line:
+            self.log.add(line, Kind.EVENT)
 
     # -- state ------------------------------------------------------------
 
