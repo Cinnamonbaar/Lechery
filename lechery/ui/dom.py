@@ -70,21 +70,49 @@ def css_geometry(rect) -> tuple[float, float, float, float]:
     return (rect.x / scale, rect.y / scale, rect.width / scale, rect.height / scale)
 
 
-def call(path: str, *args) -> Optional[object]:
-    """Call `window.<path>(*args)`, returning None if anything is missing.
+def evaluate(source: str) -> Optional[str]:
+    """Run JavaScript in the page and return its result as a string.
 
-    `path` is dotted, so "LecheryAvatar.place" walks the window. Missing
-    objects are the normal case off the web and while a script is still
-    loading, so they are not errors.
+    Everything that talks to our own scripts goes through here rather than
+    through attribute access on the window proxy. Two things the bridge
+    does not reliably do: find globals a page script defined, and marshal a
+    Python dict into a JavaScript object. Both fail silently, which is
+    indistinguishable from the script never having loaded -- and that is
+    exactly the confusion this replaced.
+
+    A string comes back because that always marshals.
     """
-    target = window()
-    if target is None:
+    handle = window()
+    if handle is None:
         return None
     try:
-        for name in path.split("."):
-            target = getattr(target, name, None)
-            if target is None:
-                return None
-        return target(*args)
+        result = handle.eval(source)
     except Exception:
         return None
+    return "" if result is None else str(result)
+
+
+def call_json(path: str, payload) -> bool:
+    """Call `window.<path>(payload)` with `payload` sent as JSON.
+
+    JSON rather than the object itself: a literal in the source is one
+    thing the bridge cannot get wrong.
+    """
+    import json
+
+    try:
+        encoded = json.dumps(payload)
+    except (TypeError, ValueError):
+        return False
+    return evaluate(f"window.{path}({encoded})") is not None
+
+
+def call(path: str, *args) -> Optional[str]:
+    """Call `window.<path>(*args)` with simple scalar arguments."""
+    import json
+
+    try:
+        rendered = ", ".join(json.dumps(a) for a in args)
+    except (TypeError, ValueError):
+        return None
+    return evaluate(f"window.{path}({rendered})")

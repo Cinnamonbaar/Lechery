@@ -37,7 +37,9 @@ def available() -> bool:
 
 def ready() -> bool:
     """Whether the library has finished loading and drawn something."""
-    return bool(dom.call("LecheryAvatar.ready"))
+    return dom.evaluate(
+        "window.LecheryAvatar ? String(window.LecheryAvatar.ready()) : 'false'"
+    ) == "true"
 
 
 def status() -> str:
@@ -46,10 +48,15 @@ def status() -> str:
     There is no console on a phone, so a failure in the page is otherwise
     completely silent -- the panel draws this instead of an empty box.
     """
-    reported = dom.call("LecheryAvatar.status")
+    reported = dom.evaluate(
+        # Reports what is actually in the page, so a missing script and a
+        # library that failed to load are not the same word.
+        "window.LecheryAvatar ? window.LecheryAvatar.status()"
+        " : ('no bridge (da=' + (typeof da) + ')')"
+    )
     if reported is None:
-        return "unavailable"
-    return str(reported)
+        return "no browser"
+    return reported
 
 
 # -- the mapping ----------------------------------------------------------
@@ -160,7 +167,7 @@ class Avatar:
         if current == self._signature:
             return False
         self._signature = current
-        dom.call("LecheryAvatar.update", payload(character))
+        dom.call_json("LecheryAvatar.update", payload(character))
         return True
 
     def place(self, rect) -> None:

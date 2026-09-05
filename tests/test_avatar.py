@@ -156,3 +156,71 @@ def test_the_desktop_falls_back_to_the_placeholder_figure():
     assert not avatar.available()
     assert panel.avatar is None
     assert panel.doll is not None
+
+
+# -- talking to the page --------------------------------------------------
+
+
+def test_scalar_calls_are_rendered_as_javascript(monkeypatch):
+    """The bridge is driven by source text, not by marshalled objects."""
+    from lechery.ui import dom
+
+    seen = []
+    monkeypatch.setattr(dom, "evaluate", lambda source: seen.append(source) or "")
+
+    dom.call("LecheryAvatar.place", 10.5, 20, 100, 200)
+    assert seen == ["window.LecheryAvatar.place(10.5, 20, 100, 200)"]
+
+
+def test_a_payload_crosses_as_json(monkeypatch):
+    """A python dict is one of the things the bridge does not marshal."""
+    import json
+
+    from lechery.ui import dom
+
+    seen = []
+    monkeypatch.setattr(dom, "evaluate", lambda source: seen.append(source) or "")
+
+    dom.call_json("LecheryAvatar.update", {"name": "Ilse", "fem": 8.5})
+    assert len(seen) == 1
+    assert seen[0].startswith("window.LecheryAvatar.update(")
+
+    encoded = seen[0][len("window.LecheryAvatar.update("):-1]
+    assert json.loads(encoded) == {"name": "Ilse", "fem": 8.5}
+
+
+def test_a_name_with_quotes_cannot_break_the_call(monkeypatch):
+    """The name is player-supplied, so it reaches the page as data."""
+    import json
+
+    from lechery.ui import dom
+
+    seen = []
+    monkeypatch.setattr(dom, "evaluate", lambda source: seen.append(source) or "")
+
+    dom.call_json("LecheryAvatar.update", {"name": '");alert("x'})
+    encoded = seen[0][len("window.LecheryAvatar.update("):-1]
+    assert json.loads(encoded)["name"] == '");alert("x'
+
+
+def test_status_says_which_thing_is_missing(monkeypatch):
+    """"unavailable" covered four causes; each should name itself."""
+    from lechery.ui import avatar as module
+    from lechery.ui import dom
+
+    monkeypatch.setattr(dom, "evaluate", lambda source: None)
+    assert module.status() == "no browser"
+
+    monkeypatch.setattr(dom, "evaluate", lambda source: "no bridge (da=undefined)")
+    assert "da=undefined" in module.status()
+
+
+def test_ready_is_only_true_when_the_page_says_so(monkeypatch):
+    from lechery.ui import avatar as module
+    from lechery.ui import dom
+
+    monkeypatch.setattr(dom, "evaluate", lambda source: "false")
+    assert module.ready() is False
+
+    monkeypatch.setattr(dom, "evaluate", lambda source: "true")
+    assert module.ready() is True
