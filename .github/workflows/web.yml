@@ -75,6 +75,37 @@ jobs:
           done < refs.txt
           exit $status
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build the TypeScript version
+        # Published alongside the Python build rather than instead of it, so
+        # both are live while the port catches up: /next/ is the new one.
+        # Its Vite base is relative, so a subdirectory needs no config.
+        working-directory: web
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+      - name: Stage the TypeScript version at /next/
+        run: |
+          rm -rf build/web/next
+          mkdir -p build/web/next
+          cp -r web/dist/. build/web/next/
+          test -f build/web/next/index.html || {
+            echo "::error::the TypeScript build produced no index.html"
+            exit 1
+          }
+          test -f build/web/next/vendor/dynamic-avatar-drawer/da.js || {
+            echo "::error::the avatar library was not copied into the build"
+            exit 1
+          }
+          du -sh build/web/next
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
