@@ -5,7 +5,7 @@ from __future__ import annotations
 import pygame
 
 from ..entities.actor import Player
-from ..traits import TRAITS
+from ..traits import TRAITS, cup_size
 from .paperdoll import LABEL, Paperdoll
 from . import avatar as avatar_module
 from .metrics import px
@@ -104,7 +104,11 @@ class PaperdollPanel(Panel):
             label = font.render(TRAITS[key].label, True, KEY)
             # Values are drawn right-aligned so the column reads as a table
             # and a changing number does not shuffle the label about.
-            value = font.render(character.traits.describe(key), True, VALUE)
+            # Bust reads as a cup size rather than the raw index behind it.
+            shown = cup_size(character.traits[key]) if key == "bust" else (
+                character.traits.describe(key)
+            )
+            value = font.render(shown, True, VALUE)
             surface.blit(label, (rect.x, y))
             surface.blit(value, (rect.right - value.get_width(), y))
             y += self.body_style.line_height + px(ROW_GAP)

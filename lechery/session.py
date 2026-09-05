@@ -53,8 +53,27 @@ class Session:
     def update(self, direction: tuple[float, float], dt: float) -> None:
         """Advance one frame. `direction` is raw input, need not be unit."""
         self.player.move(self.room_map.tilemap, direction, dt)
+        self._check_trap()
         self._check_doorway()
         self._check_portal()
+
+    def _check_trap(self) -> None:
+        """Spring a trap the player is standing on, then spend it.
+
+        Checked before the doorway so a trap on the way out still fires, and
+        the tile becomes plain floor so it triggers once per step, not every
+        frame the body overlaps it. The bust change narrates itself through
+        the trait change hook.
+        """
+        from .space import Tile
+
+        tilemap = self.room_map.tilemap
+        x, y = int(self.player.position[0]), int(self.player.position[1])
+        if tilemap.get(x, y) is not Tile.TRAP:
+            return
+        tilemap.set(x, y, Tile.FLOOR)
+        self.log.add("The tile gives beneath you with a soft click.", Kind.EVENT)
+        self.player.character.adjust("bust", 1)
 
     def _check_doorway(self) -> None:
         """Transition when the player stands in a doorway.

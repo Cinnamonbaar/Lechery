@@ -20,17 +20,20 @@ from .silhouette import build_silhouette, draw_actor
 from .text import TextStyle
 
 BACKGROUND = (10, 9, 12)
+TRAP_MARK = (150, 96, 128)
 TILE_COLORS = {
     Tile.FLOOR: (46, 42, 52),
     Tile.WALL: (74, 68, 82),
     Tile.DOORWAY: (62, 56, 70),
+    Tile.TRAP: (46, 42, 52),  # reads as floor; the mark on top gives it away
 }
 FLOOR_LINE = (38, 34, 44)
 PORTAL = (188, 156, 96)
 MUTED = (124, 118, 128)
 
-#: Design units per tile.
-TILE = 34
+#: Design units per tile. Larger than the room count is small, so a room
+#: fills the screen and the player pawn reads big rather than distant.
+TILE = 52
 
 MARGIN = 18
 
@@ -124,6 +127,13 @@ class WorldView:
                 pygame.draw.rect(surface, TILE_COLORS[tile], rect)
                 if tile is not Tile.WALL:
                     pygame.draw.rect(surface, FLOOR_LINE, rect, width=px(1))
+                if tile is Tile.TRAP:
+                    # A faint plate, so it is noticeable without being an
+                    # obvious "do not step here" the way a bright tile would.
+                    pygame.draw.rect(
+                        surface, TRAP_MARK, rect.inflate(-px(10), -px(10)),
+                        width=px(2), border_radius=px(2),
+                    )
 
     def _draw_portals(self, surface: pygame.Surface, offset: tuple[float, float]) -> None:
         ox, oy = offset

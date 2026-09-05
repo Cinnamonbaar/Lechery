@@ -17,6 +17,9 @@ class Tile(IntEnum):
     WALL = 2
     #: Walkable, but marks the threshold between two rooms.
     DOORWAY = 3
+    #: Walkable. Springs an effect the first time it is stood on, then
+    #: spends itself and becomes plain floor.
+    TRAP = 4
 
     @property
     def solid(self) -> bool:
@@ -97,7 +100,10 @@ class TileMap:
         return self._tiles.count(tile)
 
     def __str__(self) -> str:
-        glyphs = {Tile.VOID: " ", Tile.FLOOR: ".", Tile.WALL: "#", Tile.DOORWAY: "+"}
+        glyphs = {
+            Tile.VOID: " ", Tile.FLOOR: ".", Tile.WALL: "#",
+            Tile.DOORWAY: "+", Tile.TRAP: "^",
+        }
         return "\n".join(
             "".join(glyphs[self.get(x, y)] for x in range(self.width))
             for y in range(self.height)

@@ -62,7 +62,7 @@ def template_pool() -> TemplatePool:
                 id="tut_cistern",
                 name="Dry Cistern",
                 roles=frozenset({Role.PASSAGE, Role.COMBAT}),
-                tags=frozenset({"indoors"}),
+                tags=frozenset({"indoors", "trapped"}),
                 descriptions=(
                     "A basin sunk into the floor, empty but for a crust of "
                     "salt and something's shed skin.",
@@ -73,7 +73,7 @@ def template_pool() -> TemplatePool:
                 name="Guardroom",
                 roles=frozenset({Role.COMBAT}),
                 weight=1.5,
-                tags=frozenset({"indoors"}),
+                tags=frozenset({"indoors", "trapped"}),
                 descriptions=(
                     "Racks line the walls, their weapons long since taken. "
                     "Something has made a nest of the straw in the corner.",

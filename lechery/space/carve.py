@@ -21,7 +21,17 @@ from ..world.room import Room
 from .tiles import Tile, TileMap
 
 #: Tile size of a room that fills one screen, walls included.
-DEFAULT_ROOM_SIZE = (27, 17)
+DEFAULT_ROOM_SIZE = (19, 13)
+
+#: How many interior pillars a room may scatter. A single 1x1 obstacle in
+#: an open rectangle can never wall the room off -- you always go around --
+#: so this needs no connectivity check as long as they stay off the doorway
+#: approaches, which _interior_cells guarantees.
+PILLARS = (0, 4)
+
+#: How many breast-trap tiles a room may hold. Only rooms tagged for it get
+#: them; see carve_room.
+TRAPS = (1, 3)
 
 #: Compass directions can be cut into a wall; anything else (an "up", a
 #: "scramble down") is not a wall direction and becomes a portal instead.
@@ -127,7 +137,54 @@ def carve_room(
         doorway = _cut_doorway(tilemap, direction, exit_.target, door_width, room.id)
         doorways[as_key(direction)] = doorway
 
+    # Interior variation, drawn from cells kept clear of the walls and the
+    # doorway approaches. Safe rooms (havens, the entrance) are left plain;
+    # a town square full of pillars reads as rubble, not a town.
+    if not room.has_tag("safe"):
+        cells = _interior_cells(tilemap)
+        rng.shuffle(cells)
+        _scatter_pillars(tilemap, room.id, cells, rng)
+        if room.has_tag("trapped"):
+            _scatter_traps(tilemap, room.id, cells, rng)
+
     return RoomMap(room_id=room.id, tilemap=tilemap, doorways=doorways)
+
+
+def _interior_cells(tilemap: TileMap) -> list[tuple[int, int]]:
+    """Floor tiles safe to decorate: two in from every wall.
+
+    Keeping a two-tile border clear means a decoration is never adjacent to
+    a wall or a doorway, so the path from any door into the room stays open
+    however the interior is filled.
+    """
+    return [
+        (x, y)
+        for y in range(3, tilemap.height - 3)
+        for x in range(3, tilemap.width - 3)
+        if tilemap.get(x, y) is Tile.FLOOR
+    ]
+
+
+def _scatter_pillars(
+    tilemap: TileMap, room_id: str, cells: list[tuple[int, int]], rng: random.Random
+) -> None:
+    count = min(rng.randint(*PILLARS), len(cells))
+    for _ in range(count):
+        if not cells:
+            return
+        x, y = cells.pop()
+        tilemap.set(x, y, Tile.WALL, room_id)
+
+
+def _scatter_traps(
+    tilemap: TileMap, room_id: str, cells: list[tuple[int, int]], rng: random.Random
+) -> None:
+    count = min(rng.randint(*TRAPS), len(cells))
+    for _ in range(count):
+        if not cells:
+            return
+        x, y = cells.pop()
+        tilemap.set(x, y, Tile.TRAP, room_id)
 
 
 def _cut_doorway(

@@ -10,7 +10,7 @@ from .character import Character, default_character
 from .identity import GENDERS, HE, PRONOUN_SETS, SHE, THEY, Gender, Pronouns
 from .palette import EYE_COLOURS, HAIR_COLOURS, Colour, colour
 from .perception import CLOTHED, GLIMPSED, NUDE, Read, Visibility, perceive, presentation
-from .scale import BUST, HEIGHT, MINIMUM_AGE, PHALLUS, Band, Scale, scale_for
+from .scale import BUST, HEIGHT, MINIMUM_AGE, PHALLUS, Band, Scale, cup_size, scale_for
 from .traits import TRAITS, Change, TraitDef, Traits
 
 __all__ = [
@@ -35,6 +35,7 @@ __all__ = [
     "Read",
     "SHE",
     "Scale",
+    "cup_size",
     "THEY",
     "TRAITS",
     "TraitDef",

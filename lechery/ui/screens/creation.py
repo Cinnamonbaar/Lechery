@@ -23,10 +23,11 @@ from ...stats import CREATION_POINTS, STAT_DEFAULT, Stat, StatBlock, Skills
 from ...traits import EYE_COLOURS, HAIR_COLOURS, GENDERS, PRONOUN_SETS
 from ...traits.character import Character, default_character
 from ...traits.identity import Gender
-from ...traits.scale import BUST, HEIGHT, PHALLUS
+from ...traits.scale import BUST, HEIGHT, PHALLUS, cup_size
 from ...traits.traits import Traits
 from ..fonts import load as load_font
 from ..metrics import design, px
+from .. import avatar as avatar_module
 from ..paperdoll import Paperdoll
 from ..text import TextStyle
 from ..widgets import (
@@ -98,6 +99,9 @@ class CharacterCreation(Screen):
         self.small = TextStyle(load_font("body", 13))
 
         self.doll = Paperdoll((1, 1), self.character)
+        # The drawn avatar exists only in a browser; the placeholder figure
+        # stays for the desktop. Shown on every creation step, not just one.
+        self.avatar = avatar_module.shared() if avatar_module.available() else None
         self.blurb = Paragraph(self.small, "", MUTED)
         self.detail = Paragraph(self.small, "", MUTED)
 
@@ -253,7 +257,7 @@ class CharacterCreation(Screen):
             Slider(
                 rows[4], "Bust", self.body,
                 minimum=BUST.minimum, maximum=BUST.maximum, value=float(traits["bust"]),
-                format=lambda v: BUST.label(v),
+                format=lambda v: cup_size(v),
                 on_change=lambda v: self._set_trait("bust", v),
             ),
             Slider(
@@ -463,12 +467,26 @@ class CharacterCreation(Screen):
         else:
             self._draw_doll_column(surface, rect)
 
+    def _blit_figure(self, surface: pygame.Surface, figure_rect: pygame.Rect) -> None:
+        """Draw the character's body into `figure_rect`.
+
+        The real avatar when the browser has it, the primitive placeholder
+        otherwise. Placed every frame so the page element it uses is not
+        taken down by the end-of-frame sweep.
+        """
+        if self.avatar is not None:
+            self.avatar.update(self.character)
+            self.avatar.place(figure_rect)
+            return
+        self.doll.resize((figure_rect.width, figure_rect.height))
+        surface.blit(self.doll.surface(), figure_rect)
+
     def _draw_doll_column(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         height = min(rect.height - px(90), int(rect.width * 1.5))
         width = int(height * 0.62)
-        self.doll.resize((width, height))
-        figure = self.doll.surface()
-        surface.blit(figure, figure.get_rect(midtop=(rect.centerx, rect.y)))
+        figure_rect = pygame.Rect(0, 0, width, height)
+        figure_rect.midtop = (rect.centerx, rect.y)
+        self._blit_figure(surface, figure_rect)
 
         y = rect.y + height + px(14)
         for line, colour in self._identity_lines():
@@ -485,9 +503,8 @@ class CharacterCreation(Screen):
         """
         height = rect.height
         width = int(height * 0.62)
-        self.doll.resize((width, height))
-        figure = self.doll.surface()
-        surface.blit(figure, figure.get_rect(topleft=(rect.x, rect.y)))
+        figure_rect = pygame.Rect(rect.x, rect.y, width, height)
+        self._blit_figure(surface, figure_rect)
 
         lines = self._identity_lines()
         block = len(lines) * (self.small.line_height + px(2))

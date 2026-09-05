@@ -114,6 +114,20 @@ BUST = Scale(
     ),
 )
 
+#: Cup letters by bust index, so the panel can show "C cup" rather than a
+#: vague word. Index 0 is flat; the list runs as far as the scale does.
+CUP_LETTERS = ("AA", "A", "B", "C", "D", "DD", "E", "F", "G", "H", "I", "J", "K")
+
+
+def cup_size(value: float) -> str:
+    """A bra-cup label for a bust index: "flat", "B cup", ..."""
+    index = int(round(value))
+    if index <= 0:
+        return "flat"
+    letter = CUP_LETTERS[min(index, len(CUP_LETTERS) - 1)]
+    return f"{letter} cup"
+
+
 #: Length in centimetres; zero means absent, which is a real state in a game
 #: about bodies changing, not a missing value.
 PHALLUS = Scale(
