@@ -51,6 +51,15 @@ Two constraints the web build puts on the code, both already handled:
   packaging. `lechery/ui/fonts.py` loads bundled files by path instead, and
   falls back to the font inside the pygame wheel.
 
+## Credits
+
+The character avatar is drawn by
+[dynamic-avatar-drawer](https://gitlab.com/PerplexedPeach/dynamic-avatar-drawer)
+by Johnson Zhong, used under the LGPL v3 and vendored unmodified in
+`assets/vendor/dynamic-avatar-drawer/`. The author asks that the library
+and any assets created for it stay freely accessible; see that directory's
+README.
+
 ## Layout
 
 | Package | What lives there |

@@ -14,6 +14,7 @@ import pygame
 
 from ..session import Session
 from ..settings import LayoutMode, Settings
+from . import avatar as avatar_module
 from .profile import FormFactor, resolve
 from .screens.base import Screen
 
@@ -127,6 +128,10 @@ class App:
             first -= 1
         for screen in self.screens[first:]:
             screen.draw(surface)
+
+        # Page elements outlive the screen that placed them, so anything
+        # not asked for this frame is taken down now.
+        avatar_module.frame_done()
 
     def step(self, surface: pygame.Surface, events, dt: float) -> bool:
         """One whole frame. Returns whether to keep going.

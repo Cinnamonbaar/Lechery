@@ -54,6 +54,9 @@ async def custom_site():
             background-color:powderblue;
         }
     </style>
+
+    <script src="{{cookiecutter.cdn}}/browserfs.min.js"></script>
+
 </head>
 <body>
     <div id="transfer" align=center>
@@ -172,3 +175,31 @@ def test_the_override_comes_after_the_rule_it_has_to_beat(patched):
     """Equal specificity is decided by order; !important settles it anyway,
     but relying on both is free."""
     assert patched.index("#transfer {") < patched.index("#transfer[hidden]")
+
+
+def test_the_avatar_library_and_bridge_are_loaded_by_the_page(patched):
+    """They have to exist before python asks for them."""
+    assert '<script src="da.js" defer></script>' in patched
+    assert '<script src="avatar.js" defer></script>' in patched
+
+
+def test_the_bridge_loads_after_the_library_it_uses(patched):
+    """avatar.js calls into da on load; the order is not decorative."""
+    assert patched.index('src="da.js"') < patched.index('src="avatar.js"')
+
+
+def test_the_vendored_library_is_not_modified():
+    """LGPL compliance rests on it staying replaceable.
+
+    Checked as a byte comparison against what is served, so an accidental
+    edit or a bundler getting clever shows up here.
+    """
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    vendored = root / "assets" / "vendor" / "dynamic-avatar-drawer" / "da.js"
+
+    assert vendored.exists(), "the library should be vendored, not fetched at build time"
+    assert (vendored.parent / "LICENSE.md").exists(), "its licence must ship with it"
+    text = vendored.read_text(errors="ignore")
+    assert "webpackUniversalModuleDefinition" in text, "should be the packaged dist build"

@@ -49,6 +49,15 @@ PATCHES: list[tuple[str, str]] = [
     # Keep the progress area visible: the default hides it unless debugging,
     # which is why a bar exists but is never seen.
     ("transfer.hidden = debug_hidden", "transfer.hidden = false"),
+    # The avatar library and our bridge to it, loaded before the game so
+    # the module exists by the time python asks for it. Deferred so they do
+    # not hold up the first paint of the loading screen.
+    (
+        '<script src="{{cookiecutter.cdn}}/browserfs.min.js"></script>',
+        '<script src="{{cookiecutter.cdn}}/browserfs.min.js"></script>\n'
+        '    <script src="da.js" defer></script>\n'
+        '    <script src="avatar.js" defer></script>',
+    ),
     # A title above the bar, so the wait shows the game's name.
     (
         '<div class="emscripten" id="status">Downloading...</div>',

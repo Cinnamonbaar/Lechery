@@ -7,6 +7,7 @@ import pygame
 from ..entities.actor import Player
 from ..traits import TRAITS
 from .paperdoll import LABEL, Paperdoll
+from . import avatar as avatar_module
 from .metrics import px
 from .panel import Panel
 from .text import TextStyle
@@ -36,6 +37,10 @@ class PaperdollPanel(Panel):
         self.style = style
         self.body_style = style
 
+        # The drawn avatar exists only in a browser; the placeholder figure
+        # stays for the desktop, where nothing can draw it.
+        self.avatar = avatar_module.shared() if avatar_module.available() else None
+
     @property
     def character(self):
         return self.player.character
@@ -49,9 +54,16 @@ class PaperdollPanel(Panel):
         if width <= 0 or height <= 0:
             return
 
-        self.doll.resize((width, height))
-        figure = self.doll.surface()
-        surface.blit(figure, figure.get_rect(midtop=(rect.centerx, rect.y)))
+        figure_rect = pygame.Rect(0, 0, width, height)
+        figure_rect.midtop = (rect.centerx, rect.y)
+
+        if self.avatar is not None:
+            self.avatar.update(self.character)
+            self.avatar.place(figure_rect)
+        else:
+            self.doll.resize((width, height))
+            figure = self.doll.surface()
+            surface.blit(figure, figure_rect)
 
         self._draw_traits(surface, rect, rect.y + height + px(12))
 

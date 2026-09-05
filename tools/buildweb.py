@@ -32,6 +32,16 @@ OUTPUT = ROOT / "build" / "web"
 #: Everything the game needs at runtime, and nothing else.
 SHIPPED = ["main.py", "lechery", "assets"]
 
+#: Scripts copied beside index.html rather than into the game's bundle:
+#: the page loads them, so they have to be fetchable as plain files. The
+#: vendored library is copied whole and unmodified, which is what keeps it
+#: replaceable under its licence.
+WEB_SCRIPTS = [
+    ROOT / "assets" / "vendor" / "dynamic-avatar-drawer" / "da.js",
+    ROOT / "assets" / "vendor" / "dynamic-avatar-drawer" / "LICENSE.md",
+    ROOT / "assets" / "avatar.js",
+]
+
 #: Canvas size, passed to pygbag so the page and main.py's set_mode agree.
 #: Left to differ, the game lays itself out against a surface it did not
 #: get, which looks exactly like a crash.
@@ -67,6 +77,12 @@ def collect() -> Path:
     if OUTPUT.exists():
         shutil.rmtree(OUTPUT)
     shutil.move(str(produced), str(OUTPUT))
+
+    for script in WEB_SCRIPTS:
+        if script.exists():
+            shutil.copy2(script, OUTPUT / script.name)
+        else:
+            raise FileNotFoundError(f"missing web script: {script}")
     return OUTPUT
 
 
