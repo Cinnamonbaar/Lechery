@@ -2,10 +2,11 @@
   /** The title screen. */
   interface Props {
     onstart: () => void;
+    onsettings: () => void;
     version?: string;
   }
 
-  let { onstart, version = "" }: Props = $props();
+  let { onstart, onsettings, version = "" }: Props = $props();
 </script>
 
 <div class="menu">
@@ -16,6 +17,7 @@
 
   <div class="actions">
     <button class="primary" onclick={onstart}>New game</button>
+    <button onclick={onsettings}>Settings</button>
   </div>
 
   <footer>

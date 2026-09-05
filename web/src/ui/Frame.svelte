@@ -23,6 +23,7 @@
     rightLabel?: string;
     onToggleLeft?: () => void;
     onToggleRight?: () => void;
+    onSettings?: () => void;
   }
 
   let {
@@ -36,6 +37,7 @@
     rightLabel = "Log",
     onToggleLeft,
     onToggleRight,
+    onSettings,
   }: Props = $props();
 
   // On a narrow screen a bar floats over the world, so opening one must not
@@ -70,6 +72,9 @@
           aria-pressed={rightOpen}
           onclick={onToggleRight}>{rightLabel}</button
         >
+      {/if}
+      {#if onSettings}
+        <button class="tab" aria-label="Settings" onclick={onSettings}>⚙</button>
       {/if}
     </div>
   </main>

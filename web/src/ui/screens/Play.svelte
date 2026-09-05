@@ -15,6 +15,7 @@
     showStick: boolean;
     onToggleLeft: () => void;
     onToggleRight: () => void;
+    onSettings: () => void;
   }
 
   let {
@@ -25,6 +26,7 @@
     showStick,
     onToggleLeft,
     onToggleRight,
+    onSettings,
   }: Props = $props();
 
   // The log is appended to from inside the frame loop, which Svelte cannot
@@ -53,6 +55,7 @@
   {rightOpen}
   {onToggleLeft}
   {onToggleRight}
+  {onSettings}
   leftLabel="Body"
   rightLabel="Log"
 >

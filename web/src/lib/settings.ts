@@ -38,6 +38,8 @@ export interface SettingsData {
    * Null means "decide from the layout".
    */
   touchControls: boolean | null;
+  /** Which palette theme.css should apply. */
+  theme: "dark" | "light";
 }
 
 export const DEFAULTS: SettingsData = {
@@ -45,6 +47,7 @@ export const DEFAULTS: SettingsData = {
   wideLeftOpen: true,
   wideRightOpen: true,
   touchControls: null,
+  theme: "dark",
 };
 
 type Store = Pick<Storage, "getItem" | "setItem">;
@@ -63,6 +66,7 @@ export class Settings implements SettingsData {
   wideLeftOpen = DEFAULTS.wideLeftOpen;
   wideRightOpen = DEFAULTS.wideRightOpen;
   touchControls: boolean | null = DEFAULTS.touchControls;
+  theme: "dark" | "light" = DEFAULTS.theme;
 
   /** Called after any successful change, so the UI can react. */
   onChange: ((settings: Settings) => void) | null = null;
@@ -112,6 +116,9 @@ export class Settings implements SettingsData {
     ) {
       this.touchControls = source.touchControls;
     }
+    if (source.theme === "dark" || source.theme === "light") {
+      this.theme = source.theme;
+    }
   }
 
   toJSON(): SettingsData {
@@ -120,6 +127,7 @@ export class Settings implements SettingsData {
       wideLeftOpen: this.wideLeftOpen,
       wideRightOpen: this.wideRightOpen,
       touchControls: this.touchControls,
+      theme: this.theme,
     };
   }
 

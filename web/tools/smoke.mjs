@@ -54,6 +54,16 @@ await page.waitForTimeout(1500);
 await page.screenshot({ path: out("7-body.png") });
 
 // And the wide layout.
+await page.getByRole("button", { name: "Settings" }).click();
+await page.waitForTimeout(400);
+await page.screenshot({ path: out("9-settings.png") });
+await page.getByRole("button", { name: "Light" }).click();
+await page.waitForTimeout(600);
+await page.screenshot({ path: out("10-light.png") });
+await page.getByRole("button", { name: "Dark" }).click();
+await page.getByRole("button", { name: "Done" }).click();
+await page.waitForTimeout(400);
+
 await page.setViewportSize({ width: 1280, height: 800 });
 await page.waitForTimeout(800);
 await page.screenshot({ path: out("8-wide.png") });
