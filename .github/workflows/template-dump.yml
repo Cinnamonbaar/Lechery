@@ -25,6 +25,6 @@ jobs:
           echo "template: $URL"
           curl -fsSL "$URL" -o default.tmpl
           echo "bytes: $(wc -c < default.tmpl), lines: $(wc -l < default.tmpl)"
-          echo "----- BEGIN TEMPLATE -----"
-          cat -n default.tmpl
-          echo "----- END TEMPLATE -----"
+          echo "----- BEGIN HEAD -----"
+          sed -n '1,60p' default.tmpl | cat -n
+          echo "----- END HEAD -----"
