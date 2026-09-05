@@ -16,6 +16,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import loadingscreen
+
 ROOT = Path(__file__).resolve().parent.parent
 STAGE = ROOT / "build" / "stage"
 
@@ -66,6 +70,23 @@ def collect() -> Path:
     return OUTPUT
 
 
+def pygbag_version() -> str:
+    import pygbag
+
+    return pygbag.VERSION
+
+
+def prepare_template() -> Path | None:
+    """Build the restyled loading page, if the template can be fetched."""
+    destination = ROOT / "build" / "lechery.tmpl"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if loadingscreen.build(pygbag_version(), destination):
+        print(f"loading screen: patched template at {destination}")
+        return destination
+    print("loading screen: falling back to pygbag's default")
+    return None
+
+
 def main(argv: list[str]) -> int:
     staged = stage()
     files = sum(1 for _ in staged.rglob("*") if _.is_file())
@@ -73,6 +94,7 @@ def main(argv: list[str]) -> int:
     print(f"staged {files} files ({size / 1024:.0f} KiB) in {staged}")
 
     serving = "--serve" in argv
+    template = prepare_template()
     command = [
         sys.executable,
         "-m",
@@ -89,6 +111,8 @@ def main(argv: list[str]) -> int:
         "--height",
         str(CANVAS[1]),
     ]
+    if template is not None:
+        command += ["--template", str(template)]
     if not serving:
         command.append("--build")
     command.append(str(staged))
