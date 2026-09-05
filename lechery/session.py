@@ -12,7 +12,7 @@ from typing import Optional
 from .content.game import START_AREA, new_world
 from .entities.actor import Player
 from .log import Kind, MessageLog
-from .narration import describe_change
+from .narration import describe_change, describe_read_shift
 from .space import Level, RoomMap
 from .world import Direction, Room, World
 
@@ -30,6 +30,9 @@ class Session:
         # Transformations narrate themselves wherever they are triggered
         # from, rather than every caller remembering to log.
         self.player.character.traits.on_change = self._narrate_change
+        #: The last presentation the player was told about, so a shift is
+        #: reported once when it happens rather than every frame.
+        self._last_read = self.player.character.presentation().label
 
         start = self.world.area(START_AREA).entry_room
         self._arrive(start.id)
@@ -118,7 +121,25 @@ class Session:
                 self.log.prose(description)
 
     def _narrate_change(self, change) -> None:
-        line = describe_change(change, self.player.character)
+        character = self.player.character
+        line = describe_change(change, character)
+        if line:
+            self.log.add(line, Kind.EVENT)
+        self._check_read_shift()
+
+    def _check_read_shift(self) -> None:
+        """Report when the body has crossed into reading differently.
+
+        Separate from the trait change itself: growing a chest and being
+        taken for a woman because of it are two events, and the second is
+        the one the game is about.
+        """
+        character = self.player.character
+        current = character.presentation().label
+        if current == self._last_read:
+            return
+        line = describe_read_shift(self._last_read, current, character)
+        self._last_read = current
         if line:
             self.log.add(line, Kind.EVENT)
 

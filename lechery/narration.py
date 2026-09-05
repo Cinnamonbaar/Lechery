@@ -67,3 +67,34 @@ def _appeared(change: Change) -> bool:
 
 def _vanished(change: Change) -> bool:
     return float(change.before or 0) >= 1 > float(change.after or 0)
+
+
+#: How it lands when the way strangers read you shifts. Phrased from the
+#: character's side rather than an observer's: nobody is in the room when a
+#: transformation happens, so what changes in the moment is what you expect
+#: to happen next time someone looks.
+READ_SHIFTS = {
+    ("androgynous", "feminine"): "You would be taken for a woman now, by anyone not looking twice.",
+    ("androgynous", "masculine"): "You would be taken for a man now, by anyone not looking twice.",
+    ("feminine", "androgynous"): "It is no longer obvious, at a glance, what you are.",
+    ("masculine", "androgynous"): "It is no longer obvious, at a glance, what you are.",
+    ("feminine", "masculine"): "Strangers would see a man where they used to see a woman.",
+    ("masculine", "feminine"): "Strangers would see a woman where they used to see a man.",
+}
+
+
+def describe_read_shift(before: str, after: str, character: Character) -> Optional[str]:
+    """A line for the way the character is read having changed.
+
+    Returned separately from the trait change that caused it: growing a
+    chest and being read differently because of it are two events, and the
+    second is the one this game is actually about.
+    """
+    line = READ_SHIFTS.get((before, after))
+    if line is None:
+        return None
+    if not character.read_matches_identity:
+        # Worth saying outright when the mismatch is the new state, since
+        # it is the thing the player will be living with.
+        return f"{line} It is not what you are."
+    return line

@@ -12,6 +12,7 @@ from lechery.narration import describe_change  # noqa: E402
 from lechery.session import Session  # noqa: E402
 from lechery.traits import (  # noqa: E402
     GENDERS,
+    HE,
     HEIGHT,
     MINIMUM_AGE,
     SHE,
@@ -279,3 +280,145 @@ def test_the_top_down_silhouette_cannot_see_appearance_at_all():
 
     parameters = inspect.signature(silhouette.draw_actor).parameters
     assert "character" not in parameters and "player" not in parameters
+
+
+# -- perception: what strangers assume ------------------------------------
+
+
+def test_the_body_can_be_read_against_the_characters_identity(character):
+    """The case the whole model exists for."""
+    from lechery.traits import CLOTHED
+
+    character.gender = GENDERS["man"]
+    character.set("bust", 8)
+
+    read = character.presentation(CLOTHED)
+    assert read.label == "feminine"
+    assert read.pronouns(hedge=False) is SHE
+    assert character.pronouns is not SHE
+    assert not character.read_matches_identity
+
+
+def test_clothing_hides_the_signals_it_should(character):
+    """A stranger across a market is not reading anything under your clothes.
+
+    Getting this wrong is a modelling bug, not a balance problem.
+    """
+    from lechery.traits import CLOTHED, NUDE
+
+    bare = default_character()
+    bare.set("phallus", 16)
+    grown = default_character()
+    grown.set("phallus", 40)
+
+    # Dressed, the size of it cannot matter, because none of it is visible.
+    assert bare.presentation(CLOTHED).score == grown.presentation(CLOTHED).score
+    assert bare.presentation(CLOTHED).score == default_character().presentation(CLOTHED).score
+
+    # The signal is marked invisible rather than merely weighted to zero, so
+    # a future observer type can turn it back on without new plumbing.
+    hidden = {s.key for s in bare.presentation(CLOTHED).signals if not s.visible}
+    assert "phallus" in hidden
+
+    assert bare.presentation(NUDE).score < bare.presentation(CLOTHED).score
+
+
+def test_a_covered_chest_still_reads_somewhat(character):
+    """Clothing softens a silhouette; it does not erase one."""
+    from lechery.traits import CLOTHED
+
+    character.set("bust", 8)
+    assert character.presentation(CLOTHED).score > 0
+
+
+def test_knowing_someone_beats_looking_at_them(character):
+    """The reward for being known, and the difference from a stranger."""
+    from lechery.traits import CLOTHED
+
+    character.gender = GENDERS["man"]
+    character.set("bust", 9)
+
+    stranger = character.perceived_by(CLOTHED)
+    friend = character.perceived_by(CLOTHED, knows_identity=True)
+
+    assert stranger.pronouns(hedge=False) is SHE
+    assert friend.pronouns() is character.pronouns
+    assert friend.from_knowledge and not stranger.from_knowledge
+
+
+def test_an_androgynous_body_reads_as_ambiguous(character):
+    read = character.presentation()
+    assert read.ambiguous
+    assert read.label == "androgynous"
+    assert read.confidence < 0.34
+
+
+def test_an_unsure_observer_hedges_or_guesses(character):
+    """Narration hedges; people guess, and guessing wrong is the point."""
+    read = character.presentation()
+    assert read.pronouns(hedge=True) is THEY
+    assert read.pronouns(hedge=False) in (SHE, HE)
+
+
+def test_height_nudges_a_read_but_never_decides_one(character):
+    from lechery.traits import HEIGHT
+
+    character.set("height", HEIGHT.minimum)
+    assert character.presentation().ambiguous, "height alone must not settle it"
+    character.set("height", HEIGHT.maximum)
+    assert character.presentation().ambiguous
+
+
+def test_presentation_bias_lets_clothing_push_the_read(character):
+    """Style is not a body trait: you can change how you dress unchanged."""
+    before = character.presentation().score
+    character.presentation_bias = 0.5
+    after = character.presentation().score
+    assert after > before
+    assert character.traits.history == [], "bias is not a change to the body"
+
+
+def test_a_poor_glimpse_reads_less_confidently(character):
+    from lechery.traits import CLOTHED, GLIMPSED
+
+    character.set("bust", 9)
+    assert character.presentation(GLIMPSED).confidence < character.presentation(CLOTHED).confidence
+
+
+def test_scores_stay_within_range_at_the_extremes(character):
+    from lechery.traits import NUDE
+
+    character.set("bust", 12)
+    character.presentation_bias = 1.0
+    assert -1.0 <= character.presentation(NUDE).score <= 1.0
+
+    character.set("bust", 0)
+    character.set("phallus", 40)
+    character.presentation_bias = -1.0
+    assert -1.0 <= character.presentation(NUDE).score <= 1.0
+
+
+def test_growing_into_a_different_read_is_narrated_once():
+    """Being taken for someone else is its own event, not a trait change."""
+    from lechery.log import Kind
+
+    session = Session.new_game(1234)
+    character = session.player.character
+    character.gender = GENDERS["man"]
+
+    character.set("bust", 9)
+    lines = [e.text for e in session.log if e.kind is Kind.EVENT]
+    assert any("taken for a woman" in line for line in lines)
+    assert any("not what you are" in line for line in lines)
+
+    before = len(session.log)
+    character.set("bust", 10)
+    assert len(session.log) > before, "the trait change still logs"
+    shifts = [e.text for e in session.log if "taken for a woman" in e.text]
+    assert len(shifts) == 1, "the shift is reported once, not on every nudge"
+
+
+def test_a_read_that_matches_identity_is_not_flagged(character):
+    character.gender = GENDERS["woman"]
+    character.set("bust", 8)
+    assert character.read_matches_identity

@@ -16,6 +16,10 @@ ASPECT = 0.62
 NAME = (222, 214, 206)
 KEY = (122, 116, 128)
 VALUE = (186, 180, 176)
+#: The read line is warned-coloured only when it disagrees with identity --
+#: it is a situation the player is living with, not an error.
+READ = (150, 158, 170)
+READ_MISMATCH = (196, 156, 116)
 ROW_GAP = 4
 
 #: Traits shown under the figure, in this order. Not every trait: the bar is
@@ -36,7 +40,7 @@ class PaperdollPanel(Panel):
         return self.player.character
 
     def draw_body(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
-        rows = len(SHOWN) + 2
+        rows = len(SHOWN) + 3
         text_height = rows * (self.body_style.line_height + ROW_GAP)
 
         height = min(rect.height - text_height, int(rect.width / ASPECT))
@@ -60,6 +64,18 @@ class PaperdollPanel(Panel):
 
         gender = font.render(f"{character.gender}  ·  {character.pronouns}", True, KEY)
         surface.blit(gender, (rect.x, y))
+        y += self.body_style.line_height + ROW_GAP
+
+        # What strangers see, which is allowed to disagree with the line
+        # above it -- and when it does, that is worth showing plainly.
+        read = character.presentation()
+        matches = character.read_matches_identity
+        text = f"read as {read.label}"
+        if not matches:
+            text += f" · {read.pronouns(hedge=False)}"
+        surface.blit(
+            font.render(text, True, READ if matches else READ_MISMATCH), (rect.x, y)
+        )
         y += self.body_style.line_height + ROW_GAP + 4
 
         for key in SHOWN:
