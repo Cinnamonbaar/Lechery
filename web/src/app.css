@@ -1,0 +1,89 @@
+/* Base styles. Structure only -- every value comes from theme.css. */
+
+@import "./theme.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  /* The world view is a game, not a document: a drag should move the player,
+   * not bounce the page. */
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+#app {
+  height: 100%;
+  /* Real viewport units, so the iOS keyboard and toolbar cannot letterbox the
+   * layout the way 100vh does. */
+  height: 100dvh;
+}
+
+button {
+  font: inherit;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-small);
+  min-height: var(--control-height);
+  padding: 0 var(--gap);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent-soft);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+input[type="text"] {
+  font: inherit;
+  font-size: var(--font-size); /* never below 16px; see theme.css */
+  color: var(--ink);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-small);
+  min-height: var(--control-height);
+  padding: 0 var(--gap-tight);
+  width: 100%;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: var(--control-height);
+  accent-color: var(--accent);
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  margin: 0;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
