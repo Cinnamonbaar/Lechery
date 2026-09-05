@@ -16,7 +16,9 @@
   import { EYE_COLOURS, HAIR_COLOURS, rgbCss } from "$lib/traits/palette";
   import { AGE, BUST, cupSize, HEIGHT, PHALLUS } from "$lib/traits/scale";
   import { Traits } from "$lib/traits/traits";
+  import Panel from "../Panel.svelte";
   import Paperdoll from "../Paperdoll.svelte";
+  import Rule from "../Rule.svelte";
   import Slider from "../Slider.svelte";
 
   interface Props {
@@ -69,14 +71,19 @@
 </script>
 
 <div class="creation" class:wide class:stacked={!wide}>
-  <div class="doll">
-    <!-- Never dropped on a phone: what you are building is the point of the
-         screen, and a form of sliders with no figure is a settings page. -->
-    <Paperdoll {character} revision={draft.bust + draft.phallus + draft.height} />
+  <div class="doll panel">
+    <div class="panel-fill">
+      <!-- Never dropped on a phone: what you are building is the point of
+           the screen, and a form of sliders with no figure is a settings
+           page. -->
+      <Paperdoll {character} revision={draft.bust + draft.phallus + draft.height} />
+    </div>
   </div>
 
-  <div class="form">
-    <h2>Who you were</h2>
+  <div class="form panel">
+   <div class="panel-fill">
+    <div class="scroll">
+    <Rule>Who you were</Rule>
 
     <label class="field">
       <span>Name</span>
@@ -108,7 +115,7 @@
       </p>
     </fieldset>
 
-    <h2>The body you woke in</h2>
+    <Rule>The body you woke in</Rule>
 
     <Slider
       label="Age"
@@ -177,7 +184,7 @@
       </div>
     </fieldset>
 
-    <h2>Before</h2>
+    <Rule>Before</Rule>
     <div class="backstories">
       {#each BACKSTORIES as entry (entry.id)}
         <button
@@ -197,6 +204,8 @@
       <button type="button" onclick={onback}>Back</button>
       <button type="button" class="primary" onclick={begin}>Begin</button>
     </div>
+    </div>
+   </div>
   </div>
 </div>
 
@@ -220,29 +229,30 @@
     grid-template-rows: minmax(180px, 34%) 1fr;
   }
 
-  .doll {
-    background: var(--panel);
-    border: 1px solid var(--panel-edge);
-    border-radius: var(--radius);
-    min-height: 0;
-    overflow: hidden;
-  }
-
+  .doll,
   .form {
     min-height: 0;
+  }
+
+  .scroll {
+    /* Must claim the height and be allowed to shrink, or the form overflows
+     * the panel -- and since the panel is clipped to its cut corners, the
+     * overflow is not just invisible but untappable. */
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    padding-right: var(--gap-tight);
+    padding: var(--gap);
     padding-bottom: max(var(--gap), env(safe-area-inset-bottom));
     -webkit-overflow-scrolling: touch;
   }
 
-  h2 {
-    font-size: var(--font-size-title);
-    margin: var(--gap) 0 var(--gap-tight);
-    color: var(--ink);
+  /* The rules that separate the sections need air above them and less
+   * below, so each one reads as belonging to what follows it. */
+  .scroll :global(.rule) {
+    margin: calc(var(--gap) * 1.5) 0 var(--gap);
   }
 
-  h2:first-child {
+  .scroll :global(.rule:first-child) {
     margin-top: 0;
   }
 
@@ -258,8 +268,9 @@
     display: block;
     font-family: var(--font-ui);
     font-size: var(--font-size-small);
+    letter-spacing: var(--tracking);
     color: var(--ink-dim);
-    padding: 0 0 4px;
+    padding: 0 0 6px;
   }
 
   .chips,
@@ -273,11 +284,6 @@
     font-size: var(--font-size-small);
   }
 
-  .chip.selected {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
   .swatch {
     width: 40px;
     height: 40px;
@@ -287,14 +293,20 @@
   }
 
   .swatch.selected {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline: var(--hairline) solid var(--gold-bright);
+    outline-offset: 3px;
+    box-shadow: var(--glow);
   }
 
   .note {
     font-size: var(--font-size-small);
     color: var(--ink-faint);
     margin: var(--gap-tight) 0 0;
+  }
+
+  .note strong {
+    color: var(--gold);
+    font-weight: 600;
   }
 
   .backstories {
@@ -305,6 +317,7 @@
 
   .backstory {
     display: flex;
+    border-radius: var(--cut-small);
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
@@ -319,7 +332,8 @@
   }
 
   .backstory.selected {
-    border-color: var(--accent);
+    border-color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 12%, var(--panel-raised));
   }
 
   .description {

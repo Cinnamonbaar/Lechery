@@ -4,9 +4,15 @@
    *
    * Small on purpose. Everything here is a choice the automatic answer can
    * get wrong -- a tablet measured as a phone, a laptop with a touchscreen,
-   * a room too bright for the dark theme -- and nothing here is a preference
-   * the game should be asking about before it has been played.
+   * a room too bright for the dark palette -- and nothing here is a
+   * preference the game should be asking about before it has been played.
+   *
+   * Shaped like that game's own: a list of sections down the left, the rows
+   * for one section on the right. On a phone the sections become a row of
+   * tabs above the rows instead.
    */
+  import Choice from "../Choice.svelte";
+  import Panel from "../Panel.svelte";
   import { LayoutMode, type Settings } from "$lib/settings";
 
   interface Props {
@@ -19,137 +25,161 @@
 
   let { settings, theme, onTheme, onchange, onclose }: Props = $props();
 
-  const LAYOUTS: [LayoutMode, string, string][] = [
-    [LayoutMode.AUTO, "Automatic", "Decide from the size of the window."],
-    [LayoutMode.WIDE, "Three panes", "Doll, world and log side by side."],
-    [LayoutMode.COMPACT, "One pane", "World filling the screen, bars as drawers."],
-  ];
+  const SECTIONS = ["Display", "Controls", "About"] as const;
+  let section = $state<(typeof SECTIONS)[number]>("Display");
 
-  const TOUCH: [boolean | null, string][] = [
-    [null, "Automatic"],
-    [true, "Always"],
-    [false, "Never"],
-  ];
+  function set<K extends "layoutMode" | "touchControls">(
+    key: K,
+    value: Settings[K],
+  ) {
+    settings.set(key, value);
+    onchange();
+  }
 </script>
 
-<div class="settings">
-  <header>
-    <h2>Settings</h2>
-    <button onclick={onclose}>Done</button>
-  </header>
+<div class="screen">
+  <Panel title="Settings" icon="⚙" {onclose} padded={false}>
+    <div class="split">
+      <nav>
+        {#each SECTIONS as name (name)}
+          <button
+            class="nav ghost"
+            class:selected={section === name}
+            onclick={() => (section = name)}
+          >
+            <span class="diamond" class:hollow={section !== name}></span>
+            {name}
+          </button>
+        {/each}
+      </nav>
 
-  <fieldset>
-    <legend>Layout</legend>
-    {#each LAYOUTS as [mode, label, note] (mode)}
-      <button
-        class="option"
-        class:selected={settings.layoutMode === mode}
-        onclick={() => {
-          settings.set("layoutMode", mode);
-          onchange();
-        }}
-      >
-        <strong>{label}</strong>
-        <span>{note}</span>
-      </button>
-    {/each}
-  </fieldset>
-
-  <fieldset>
-    <legend>On-screen stick</legend>
-    <div class="row">
-      {#each TOUCH as [value, label] (label)}
-        <button
-          class="chip"
-          class:selected={settings.touchControls === value}
-          onclick={() => {
-            settings.set("touchControls", value);
-            onchange();
-          }}>{label}</button
-        >
-      {/each}
+      <div class="rows">
+        {#if section === "Display"}
+          <Choice
+            label="Layout"
+            note="How the screen is divided."
+            value={settings.layoutMode}
+            options={[
+              { value: LayoutMode.AUTO, label: "Auto" },
+              { value: LayoutMode.WIDE, label: "Three panes" },
+              { value: LayoutMode.COMPACT, label: "One pane" },
+            ]}
+            onselect={(value) => set("layoutMode", value as LayoutMode)}
+          />
+          <Choice
+            label="Theme"
+            note="Dusk, or daylight parchment."
+            value={theme}
+            options={[
+              { value: "dark", label: "Dusk" },
+              { value: "light", label: "Parchment" },
+            ]}
+            onselect={(value) => onTheme(value as "dark" | "light")}
+          />
+        {:else if section === "Controls"}
+          <Choice
+            label="On-screen stick"
+            note="Drag anywhere on the world to move."
+            value={settings.touchControls}
+            options={[
+              { value: null, label: "Auto" },
+              { value: true, label: "Always" },
+              { value: false, label: "Never" },
+            ]}
+            onselect={(value) => set("touchControls", value as boolean | null)}
+          />
+          <p class="prose">
+            A keyboard works at any time: WASD or the arrow keys.
+          </p>
+        {:else}
+          <p class="prose">
+            Lechery is a transformation RPG. The figure is drawn by
+            <a
+              href="https://gitlab.com/PerplexedPeach/dynamic-avatar-drawer"
+              target="_blank"
+              rel="noreferrer">dynamic-avatar-drawer</a
+            >, by Johnson Zhong, used under the LGPL v3 and shipped
+            unmodified.
+          </p>
+        {/if}
+      </div>
     </div>
-  </fieldset>
-
-  <fieldset>
-    <legend>Theme</legend>
-    <div class="row">
-      <button
-        class="chip"
-        class:selected={theme === "dark"}
-        onclick={() => onTheme("dark")}>Dark</button
-      >
-      <button
-        class="chip"
-        class:selected={theme === "light"}
-        onclick={() => onTheme("light")}>Light</button
-      >
-    </div>
-  </fieldset>
+  </Panel>
 </div>
 
 <style>
-  .settings {
+  .screen {
     height: 100%;
-    overflow-y: auto;
+    display: grid;
     padding: var(--gap);
     padding-top: max(var(--gap), env(safe-area-inset-top));
-    max-width: 640px;
-    margin: 0 auto;
+    padding-bottom: max(var(--gap), env(safe-area-inset-bottom));
   }
 
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--gap);
+  .split {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 180px 1fr;
   }
 
-  h2 {
-    font-size: var(--font-size-title);
-  }
-
-  fieldset {
-    border: none;
-    margin: 0 0 var(--gap);
-    padding: 0;
-  }
-
-  legend {
-    font-family: var(--font-ui);
-    font-size: var(--font-size-small);
-    color: var(--ink-dim);
-    padding-bottom: 4px;
-  }
-
-  .option {
+  nav {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    width: 100%;
-    text-align: left;
-    padding: var(--gap-tight);
-    margin-bottom: var(--gap-tight);
+    gap: 2px;
+    padding: var(--gap) var(--gap-tight);
+    border-right: var(--hairline) solid var(--panel-edge);
+    overflow: auto;
   }
 
-  .option span {
-    font-size: var(--font-size-small);
-    color: var(--ink-faint);
-  }
-
-  .row {
+  .nav {
     display: flex;
+    align-items: center;
     gap: var(--gap-tight);
-    flex-wrap: wrap;
+    justify-content: flex-start;
+    font-family: var(--font-display);
+    border-radius: 999px;
   }
 
-  .chip {
+  .nav.selected {
+    color: var(--gold-bright);
+    background: color-mix(in srgb, var(--gold) 12%, transparent);
+  }
+
+  .rows {
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--gap);
+  }
+
+  .prose {
+    color: var(--ink-dim);
     font-size: var(--font-size-small);
+    margin: 0 0 var(--gap);
   }
 
-  .chip.selected,
-  .option.selected {
-    border-color: var(--accent);
-    color: var(--accent);
+  a {
+    color: var(--gold);
+  }
+
+  /* A phone has no room for a column of sections beside the rows, so they
+   * become a strip of tabs above them. */
+  @media (max-width: 640px) {
+    .split {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+    }
+
+    nav {
+      flex-direction: row;
+      border-right: none;
+      border-bottom: var(--hairline) solid var(--panel-edge);
+      padding: var(--gap-tight);
+    }
+
+    .nav {
+      flex: 1;
+      justify-content: center;
+    }
   }
 </style>

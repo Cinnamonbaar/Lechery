@@ -12,8 +12,8 @@ import type { Portal } from "../space/level";
 import { Tile } from "../space/tiles";
 import type { WorldPalette } from "./theme";
 
-/** Tiles across the short axis the camera tries to keep in view. */
-export const TARGET_TILES = 13;
+/** Never smaller than this many device pixels per tile. */
+export const MIN_SCALE = 8;
 
 export interface Camera {
   /** Device pixels per tile. */
@@ -26,10 +26,15 @@ export interface Camera {
 /**
  * Choose a camera for a room.
  *
- * The scale comes from the *view*, not the room, so the player pawn is the
- * same size on screen everywhere; a room bigger than the view then scrolls
- * rather than zooming out, which is what makes a town feel bigger than a
- * corridor instead of just more distant.
+ * The room covers the view rather than fitting inside it: the scale is
+ * whichever of the two axes needs more, so the floor always reaches every
+ * edge and the other axis scrolls to follow the player. Fitting instead
+ * would letterbox a 19x13 room into a phone's portrait pane with more dead
+ * space than game -- which it did, and which looked like a bug.
+ *
+ * The pawn is therefore not a fixed size on screen: a long thin pane zooms
+ * in further than a square one. That is the right trade -- dead space reads
+ * as broken, and a slightly larger pawn does not.
  */
 export function cameraFor(
   roomMap: RoomMap,
@@ -38,8 +43,10 @@ export function cameraFor(
   focus: readonly [number, number],
 ): Camera {
   const [width, height] = roomMap.size;
-  const short = Math.min(viewWidth, viewHeight);
-  const scale = Math.max(8, short / TARGET_TILES);
+  const scale = Math.max(
+    MIN_SCALE,
+    Math.max(viewWidth / width, viewHeight / height),
+  );
 
   const tilesAcross = viewWidth / scale;
   const tilesDown = viewHeight / scale;

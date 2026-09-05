@@ -5,86 +5,138 @@
  * here. Components reference the properties and never hard-code a value, so
  * retheming is editing this file and nothing else -- including the world
  * canvas, which reads the --world-* properties through ui/theme.ts.
+ *
+ * The visual language is borrowed from Genshin Impact: parchment or ink
+ * panels with a gold hairline, corners cut rather than rounded, headings on
+ * a tapered rule with a diamond at its centre, and a small rotated square
+ * marking anything selected. What we take is the structure, not the colour --
+ * this game is darker than that one, so the default theme is dusk and the
+ * daylight parchment look is the alternate.
  */
 
 :root {
-  /* -- palette --------------------------------------------------------- */
-  --ink: #ece8f4;
-  --ink-dim: #a29cb4;
-  --ink-faint: #6f6982;
+  /* -- gold ------------------------------------------------------------
+   * The one colour that carries the whole style. Everything ornamental is
+   * one of these three; nothing ornamental is any other colour. */
+  --gold: #d3bc8d;
+  --gold-bright: #f7e9c6;
+  --gold-dim: #8b7748;
+  --accent: var(--gold);
+  --accent-ink: #171b24;
 
-  --ground: #100f16;
-  --panel: #191722;
-  --panel-raised: #221f2e;
-  --panel-edge: #2e2a3c;
+  /* -- surfaces --------------------------------------------------------- */
+  --ground: #0d1018;
+  --panel: #1a212c;
+  --panel-raised: #232c3a;
+  --panel-sunken: #141a23;
+  --panel-edge: rgb(211 188 141 / 30%);
+  --panel-edge-strong: rgb(211 188 141 / 55%);
+  /* Panels are lit from the top left, faintly. Flat fills read as a web
+   * page; a sheen this subtle reads as a surface. */
+  --panel-sheen: linear-gradient(
+    155deg,
+    rgb(255 255 255 / 7%),
+    rgb(255 255 255 / 0%) 45%
+  );
+  --scrim: rgb(8 10 15 / 72%);
 
-  --accent: #c2708f;
-  --accent-soft: #8f5a78;
-  --accent-ink: #1a0f16;
-  --warning: #d9a05b;
+  /* -- ink -------------------------------------------------------------- */
+  --ink: #f2ece0;
+  --ink-dim: #b2ab9c;
+  --ink-faint: #7d776c;
+  --warning: #d9a441;
 
-  /* -- the world canvas ------------------------------------------------ */
-  --world-void: #0a0910;
-  --world-floor: #2b2a33;
-  --world-floor-alt: #31303a;
-  --world-wall: #26232f;
-  --world-wall-top: #4b4759;
-  --world-doorway: #4a4356;
+  /* -- the world canvas ------------------------------------------------- */
+  --world-void: #080a10;
+  --world-floor: #1d2431;
+  --world-floor-alt: #232b3a;
+  /* Walls must not read as the void behind the level: on a phone at arm's
+   * length a near-black wall and a black nothing are the same colour. */
+  --world-wall: #333b4d;
+  --world-wall-top: #5c6480;
+  --world-doorway: #6a5636;
   --world-trap: #6d3a5d;
-  --world-portal: #d2a95f;
+  --world-portal: #d3bc8d;
   --world-player: #8d8a99;
-  --world-player-edge: #cbc7d8;
+  --world-player-edge: #e8e0cc;
 
-  /* -- type ------------------------------------------------------------ */
-  --font-body: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+  /* -- type -------------------------------------------------------------
+   * Headings are a serif with some weight to it; labels and numbers are a
+   * plain sans, the way that game separates its title text from its values. */
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
     "Times New Roman", serif;
+  --font-body: var(--font-display);
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   /* 16px is a floor, not a preference: iOS Safari zooms the page when a
    * focused input is smaller, which throws the whole layout off. */
   --font-size: 16px;
   --font-size-small: 14px;
-  --font-size-title: 20px;
+  --font-size-title: 21px;
+  --font-size-display: 34px;
   --line-height: 1.55;
+  --tracking: 0.06em;
 
-  /* -- metrics --------------------------------------------------------- */
-  --gap: 12px;
-  --gap-tight: 8px;
-  --radius: 10px;
-  --radius-small: 6px;
-  --bar-left: 260px;
-  --bar-right: 320px;
-  --control-height: 44px; /* a comfortable thumb target */
+  /* -- metrics ---------------------------------------------------------- */
+  --gap: 14px;
+  --gap-tight: 9px;
+  /* Corners are cut, not rounded: this is the shape the whole UI is built
+   * from, and one number changes all of it. */
+  --cut: 12px;
+  --cut-small: 7px;
+  --radius: 3px;
+  --hairline: 1px;
+  --control-height: 46px; /* a comfortable thumb target */
   --stick-radius: 62px;
+  --bar-left: 268px;
+  --bar-right: 330px;
 
-  --shadow: 0 8px 24px rgb(0 0 0 / 45%);
+  --shadow: 0 10px 30px rgb(0 0 0 / 50%);
+  --glow: 0 0 12px rgb(211 188 141 / 25%);
   --transition: 160ms ease;
 
   color-scheme: dark;
 }
 
 /*
- * A light theme, for the one player who wants it. Only the properties that
- * must differ are restated: everything else inherits from above, which is the
- * point of keeping the palette in variables rather than in rules.
+ * Parchment: the daylight look, panels the colour of paper. Only what must
+ * differ is restated -- gold, metrics, type and every ornament carry over,
+ * which is the point of keeping the style in variables rather than in rules.
  */
 :root[data-theme="light"] {
-  --ink: #201c28;
-  --ink-dim: #5b5468;
-  --ink-faint: #8b849c;
-  --ground: #efecf3;
-  --panel: #fbfaFD;
-  --panel-raised: #ffffff;
-  --panel-edge: #d9d4e2;
-  --accent: #96496a;
-  --accent-ink: #fff;
-  --world-void: #cfc9d8;
-  --world-floor: #ddd7e6;
-  --world-floor-alt: #e6e1ee;
-  --world-wall: #8e879d;
-  --world-wall-top: #a49db4;
-  --world-doorway: #b9b0c9;
-  --world-player: #4c4759;
-  --world-player-edge: #241f2f;
-  --shadow: 0 8px 24px rgb(40 30 60 / 18%);
+  --gold: #a8834a;
+  --gold-bright: #d8b978;
+  --gold-dim: #c3b291;
+  --accent-ink: #fffdf8;
+
+  --ground: #cfc9ba;
+  --panel: #f3eee1;
+  --panel-raised: #fbf8f0;
+  --panel-sunken: #e7e0cf;
+  --panel-edge: rgb(120 98 58 / 35%);
+  --panel-edge-strong: rgb(120 98 58 / 60%);
+  --panel-sheen: linear-gradient(
+    155deg,
+    rgb(255 255 255 / 75%),
+    rgb(255 255 255 / 0%) 55%
+  );
+  --scrim: rgb(60 52 40 / 45%);
+
+  --ink: #3c4a5a;
+  --ink-dim: #6d7887;
+  --ink-faint: #9aa1a9;
+
+  --world-void: #b9b2a2;
+  --world-floor: #ded5c2;
+  --world-floor-alt: #e7dfcd;
+  --world-wall: #8d8472;
+  --world-wall-top: #a89e89;
+  --world-doorway: #bfa877;
+  --world-trap: #b07c9a;
+  --world-player: #4a4636;
+  --world-player-edge: #23201a;
+
+  --shadow: 0 10px 30px rgb(70 58 38 / 22%);
+  --glow: 0 0 12px rgb(168 131 74 / 25%);
+
   color-scheme: light;
 }

@@ -2,10 +2,14 @@
   /**
    * The three-pane frame: paperdoll, world, log.
    *
-   * Wide screens show all three at once; narrow ones show the centre and turn
-   * the bars into drawers over it. That is one layout with a class on it
-   * rather than two component trees, so a change to a bar cannot land in one
-   * view and not the other.
+   * Wide screens show all three side by side. A phone stacks the world over
+   * the log instead of hiding the log in a drawer -- a room is 19 by 13 and a
+   * phone is nearly three times taller than it is wide, so a full-height
+   * world pane is mostly dead space, and this game's text is worth reading
+   * anyway. The paperdoll stays a drawer, because it is a thing you consult.
+   *
+   * That is one layout with a class on it rather than two component trees, so
+   * a change to a bar cannot land in one view and not the other.
    *
    * The panes are snippets, so the frame owns arrangement and nothing else.
    */
@@ -40,16 +44,18 @@
     onSettings,
   }: Props = $props();
 
-  // On a narrow screen a bar floats over the world, so opening one must not
-  // also leave the other open on top of it.
   const showLeft = $derived(Boolean(left) && leftOpen);
+  // Wide: the log is a column beside the world. Compact: it is the strip
+  // under it, and the tab collapses the strip rather than opening a drawer.
   const showRight = $derived(Boolean(right) && rightOpen);
 </script>
 
 <div class="frame" class:wide class:compact={!wide}>
   {#if showLeft}
-    <aside class="bar left">
-      {@render left?.()}
+    <aside class="bar left panel">
+      <div class="panel-fill">
+        {@render left?.()}
+      </div>
     </aside>
   {/if}
 
@@ -62,7 +68,9 @@
           class="tab"
           class:active={leftOpen}
           aria-pressed={leftOpen}
-          onclick={onToggleLeft}>{leftLabel}</button
+          onclick={onToggleLeft}
+        >
+          {#if leftOpen}<span class="diamond"></span>{/if}{leftLabel}</button
         >
       {/if}
       {#if right}
@@ -70,7 +78,9 @@
           class="tab"
           class:active={rightOpen}
           aria-pressed={rightOpen}
-          onclick={onToggleRight}>{rightLabel}</button
+          onclick={onToggleRight}
+        >
+          {#if rightOpen}<span class="diamond"></span>{/if}{rightLabel}</button
         >
       {/if}
       {#if onSettings}
@@ -80,8 +90,10 @@
   </main>
 
   {#if showRight}
-    <aside class="bar right">
-      {@render right?.()}
+    <aside class="bar right panel">
+      <div class="panel-fill">
+        {@render right?.()}
+      </div>
     </aside>
   {/if}
 </div>
@@ -108,15 +120,17 @@
 
   .frame.compact {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
+    /* The world takes what it needs to frame a room and the log takes the
+     * rest; with the log closed the world has the screen to itself. */
+    grid-template-rows: minmax(0, 46fr) minmax(0, 54fr);
     position: relative;
   }
 
+  .frame.compact:not(:has(.bar.right)) {
+    grid-template-rows: 1fr;
+  }
+
   .bar {
-    background: var(--panel);
-    border: 1px solid var(--panel-edge);
-    border-radius: var(--radius);
-    overflow: hidden;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -130,13 +144,17 @@
     width: var(--bar-right);
   }
 
-  /* Compact: the bar covers the world instead of squeezing it. A phone has
-   * no room to do both, and a squeezed world view is worse than a hidden one. */
-  .compact .bar {
+  /* The paperdoll covers the world on a phone: it is consulted, not read
+   * alongside. The log does not -- it sits in its own row, below. */
+  .compact .bar.left {
     position: absolute;
     inset: 0;
     z-index: 5;
     box-shadow: var(--shadow);
+  }
+
+  .compact .bar.right {
+    min-height: 0;
   }
 
   .centre {
@@ -156,17 +174,22 @@
     gap: var(--gap-tight);
   }
 
+  /* Over the world, so translucent and blurred rather than solid: the map
+   * should read as continuing underneath the chrome. */
   .tab {
-    font-family: var(--font-ui);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: var(--font-size-small);
-    min-height: 36px;
-    padding: 0 var(--gap-tight);
-    background: color-mix(in srgb, var(--panel) 82%, transparent);
-    backdrop-filter: blur(6px);
+    letter-spacing: var(--tracking);
+    min-height: 38px;
+    padding: 0 var(--gap);
+    background: color-mix(in srgb, var(--panel) 78%, transparent);
+    backdrop-filter: blur(8px);
   }
 
   .tab.active {
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: var(--gold);
+    color: var(--gold-bright);
   }
 </style>

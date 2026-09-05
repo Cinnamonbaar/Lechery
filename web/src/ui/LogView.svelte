@@ -32,7 +32,14 @@
 
 <div class="log" bind:this={scroller} onscroll={onScroll}>
   {#each entries as entry (entry.id)}
-    <p class="entry {entry.kind}">{entry.text}</p>
+    {#if entry.kind === "title"}
+      <h3 class="entry title">
+        <span class="diamond"></span>
+        {entry.text}
+      </h3>
+    {:else}
+      <p class="entry {entry.kind}">{entry.text}</p>
+    {/if}
   {/each}
 </div>
 
@@ -50,18 +57,29 @@
   }
 
   .entry.title {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-tight);
     font-size: var(--font-size-title);
-    font-weight: 600;
+    letter-spacing: var(--tracking);
     margin-top: var(--gap);
-    color: var(--ink);
+    color: var(--gold-bright);
+    /* A hairline under the room name, so scrollback reads as a route with
+     * stops rather than one column of prose. */
+    padding-bottom: 4px;
+    border-bottom: var(--hairline) solid var(--panel-edge);
   }
 
   .entry.prose {
     color: var(--ink-dim);
   }
 
+  /* An event is something that happened to the body: worth being the
+   * brightest thing in the column. */
   .entry.event {
     color: var(--ink);
+    padding-left: var(--gap-tight);
+    border-left: 2px solid var(--gold-dim);
   }
 
   .entry.system {

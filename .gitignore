@@ -1,9 +1,6 @@
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.venv/
-venv/
 build/
-web/node_modules/
+node_modules/
 web/dist/
 web/.svelte-kit/
+__pycache__/
+*.py[cod]

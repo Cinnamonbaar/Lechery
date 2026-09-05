@@ -26,7 +26,7 @@ page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
 await page.goto("http://localhost:4173/", { waitUntil: "networkidle" });
 await page.screenshot({ path: out("1-menu.png") });
 
-await page.getByRole("button", { name: "New game" }).click();
+await page.getByRole("button", { name: "New Game" }).click();
 await page.waitForTimeout(3000);
 await page.screenshot({ path: out("2-creation.png") });
 console.log("avatar status:", await page.locator(".status").count() ? await page.locator(".status").first().innerText() : "ready");
@@ -46,9 +46,12 @@ await page.waitForTimeout(900);
 await page.keyboard.up("ArrowRight");
 await page.screenshot({ path: out("5-moved.png") });
 
+await page.screenshot({ path: out("6-log.png") });
 await page.getByRole("button", { name: "Log" }).click();
 await page.waitForTimeout(400);
-await page.screenshot({ path: out("6-log.png") });
+await page.screenshot({ path: out("6b-log-closed.png") });
+await page.getByRole("button", { name: "Log" }).click();
+await page.waitForTimeout(400);
 await page.getByRole("button", { name: "Body" }).click();
 await page.waitForTimeout(1500);
 await page.screenshot({ path: out("7-body.png") });
@@ -57,11 +60,11 @@ await page.screenshot({ path: out("7-body.png") });
 await page.getByRole("button", { name: "Settings" }).click();
 await page.waitForTimeout(400);
 await page.screenshot({ path: out("9-settings.png") });
-await page.getByRole("button", { name: "Light" }).click();
+await page.getByRole("button", { name: "Parchment" }).click();
 await page.waitForTimeout(600);
 await page.screenshot({ path: out("10-light.png") });
-await page.getByRole("button", { name: "Dark" }).click();
-await page.getByRole("button", { name: "Done" }).click();
+await page.getByRole("button", { name: "Dusk" }).click();
+await page.getByRole("button", { name: "Close" }).click();
 await page.waitForTimeout(400);
 
 await page.setViewportSize({ width: 1280, height: 800 });

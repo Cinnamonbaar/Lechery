@@ -21,59 +21,11 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt -r requirements-dev.txt
-          pip install pygbag
-
-      - name: Run tests
-        # A broken build reaching the phone wastes a round trip, so the
-        # suite gates the deploy. It needs no display beyond SDL's dummy.
-        env:
-          SDL_VIDEODRIVER: dummy
-          SDL_AUDIODRIVER: dummy
-        run: python -m pytest -q
-
-      - name: Build the web bundle
-        run: python tools/buildweb.py
-
-      - name: Check the build actually produced a page
-        # pygbag fetches its runtime from a CDN and can fail without a
-        # non-zero exit, leaving a directory with no index.html in it.
-        # Failing here beats publishing a blank page.
-        run: |
-          test -f build/web/index.html || {
-            echo "::error::pygbag produced no index.html"
-            ls -la build/web || true
-            exit 1
-          }
-          du -sh build/web
-
-      - name: Check the page can reach everything it asks for
-        # A script tag pointing at a file that was never copied fails
-        # silently in the browser, and on a phone there is no console to
-        # find out from. Every local script the page references must exist.
-        run: |
-          echo "--- build/web ---"
-          ls -la build/web
-          echo "--- local scripts referenced by index.html ---"
-          grep -oE '<script src="[^":]+"' build/web/index.html | sed 's/.*src="//;s/"//' > refs.txt
-          cat refs.txt
-          status=0
-          while read -r ref; do
-            if [ ! -f "build/web/$ref" ]; then
-              echo "::error::index.html references $ref, which is not in build/web"
-              status=1
-            fi
-          done < refs.txt
-          exit $status
 
       - uses: actions/setup-node@v4
         with:
@@ -81,34 +33,40 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: Build the TypeScript version
-        # Published alongside the Python build rather than instead of it, so
-        # both are live while the port catches up: /next/ is the new one.
-        # Its Vite base is relative, so a subdirectory needs no config.
-        working-directory: web
-        run: |
-          npm ci
-          npm test
-          npm run build
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Stage the TypeScript version at /next/
+      - name: Check types
+        # svelte-check covers the components; tsc alone would miss them.
+        run: npm run check
+
+      - name: Run tests
+        # A broken build reaching the phone wastes a round trip, so the
+        # suite gates the deploy.
+        run: npm test
+
+      - name: Build
+        run: npm run build:fast
+
+      - name: Check the build produced a page that can reach its assets
+        # A script tag pointing at a file that was never copied fails
+        # silently in the browser, and on a phone there is no console to
+        # find out from.
         run: |
-          rm -rf build/web/next
-          mkdir -p build/web/next
-          cp -r web/dist/. build/web/next/
-          test -f build/web/next/index.html || {
-            echo "::error::the TypeScript build produced no index.html"
+          test -f dist/index.html || {
+            echo "::error::the build produced no index.html"
+            ls -la dist || true
             exit 1
           }
-          test -f build/web/next/vendor/dynamic-avatar-drawer/da.js || {
+          test -f dist/vendor/dynamic-avatar-drawer/da.js || {
             echo "::error::the avatar library was not copied into the build"
             exit 1
           }
-          du -sh build/web/next
+          du -sh dist
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: build/web
+          path: web/dist
 
   deploy:
     needs: build

@@ -114,22 +114,33 @@
   });
 </script>
 
-<div class="world" bind:this={host}>
-  <canvas bind:this={canvas}></canvas>
-  {#if showStick}
-    <Stick onmove={stickMoved} />
-  {/if}
+<div class="world panel">
+  <!-- The measured element is the fill, not the frame: the hairline is a
+       pad on the parent, and a canvas sized to the parent would overflow it
+       by exactly that much. -->
+  <div class="fill" bind:this={host}>
+    <canvas bind:this={canvas}></canvas>
+    {#if showStick}
+      <Stick onmove={stickMoved} />
+    {/if}
+  </div>
 </div>
 
 <style>
+  /* Uses the panel shape so the world is framed like everything else, but
+   * fills with the map rather than a panel colour. */
   .world {
-    position: relative;
     flex: 1;
     min-height: 0;
-    border-radius: var(--radius);
-    overflow: hidden;
-    border: 1px solid var(--panel-edge);
+    min-width: 0;
+  }
+
+  .fill {
+    position: relative;
+    height: 100%;
+    clip-path: var(--shape);
     background: var(--world-void);
+    overflow: hidden;
   }
 
   canvas {
