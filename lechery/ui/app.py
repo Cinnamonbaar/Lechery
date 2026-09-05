@@ -100,10 +100,18 @@ class App:
 
     # -- the frame --------------------------------------------------------
 
+    def resize(self, size: tuple[int, int]) -> None:
+        """Adopt a new window size, re-picking the layout if it changed shape.
+
+        Called for a desktop resize and for a browser rotating; both are the
+        same event as far as anything downstream is concerned.
+        """
+        self.window = size
+        self._refresh_form()
+
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.VIDEORESIZE:
-            self.window = (event.w, event.h)
-            self._refresh_form()
+            self.resize((event.w, event.h))
             return
         self.screen.handle_event(event)
 

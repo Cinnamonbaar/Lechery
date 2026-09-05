@@ -315,3 +315,52 @@ def test_the_build_canvas_matches_the_size_the_game_asks_for():
     import main as entry
 
     assert buildweb.CANVAS == entry.SIZE
+
+
+def test_the_viewport_is_unavailable_outside_a_browser():
+    """There is no window to ask, so the desktop size stands."""
+    import main as entry
+
+    assert entry.browser_viewport() is None
+
+
+def test_the_viewport_is_read_from_the_browser_window_when_there_is_one(monkeypatch):
+    """A phone must lay out against the screen, not the build's canvas size."""
+    import sys
+    import types
+
+    import main as entry
+
+    window = types.SimpleNamespace(innerWidth=390, innerHeight=844)
+    fake_runtime = types.SimpleNamespace(window=window)
+    monkeypatch.setitem(sys.modules, "platform", fake_runtime)
+
+    assert entry.browser_viewport() == (390, 844)
+
+
+def test_a_nonsense_viewport_is_ignored(monkeypatch):
+    """A canvas of zero size would take the whole interface with it."""
+    import sys
+    import types
+
+    import main as entry
+
+    monkeypatch.setitem(
+        sys.modules,
+        "platform",
+        types.SimpleNamespace(window=types.SimpleNamespace(innerWidth=0, innerHeight=0)),
+    )
+    assert entry.browser_viewport() is None
+
+
+def test_resizing_the_app_repicks_the_layout():
+    """Rotation and a desktop resize are the same event downstream."""
+    from lechery.ui.app import App
+    from lechery.ui.profile import FormFactor
+
+    app = App((1280, 760))
+    assert app.form is FormFactor.WIDE
+
+    app.resize((390, 844))
+    assert app.form is FormFactor.COMPACT
+    assert app.window == (390, 844)

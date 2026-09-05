@@ -41,8 +41,13 @@ try:
 except Exception:  # pragma: no cover - exercised only when an import breaks
     IMPORT_ERROR = traceback.format_exc()
 
+#: Desktop window size, and the fallback when the browser will not say.
 SIZE = (1280, 760)
 FPS = 60
+
+#: How often to re-check the browser viewport, in frames. A phone rotating
+#: is the case that matters, and it does not need to be caught instantly.
+VIEWPORT_POLL = 30
 
 #: Never advance the world by more than this in one frame. A browser tab in
 #: the background stops painting, so the first frame after it returns can
@@ -63,6 +68,31 @@ def parse_seed(argv: list[str]) -> int | None:
     for argument in argv:
         if argument.lstrip("-").isdigit():
             return int(argument.lstrip("-"))
+    return None
+
+
+def browser_viewport() -> tuple[int, int] | None:
+    """The page's usable size, in CSS pixels, or None outside a browser.
+
+    Without this the canvas is whatever size the build asked for, and a
+    phone scales that into a letterboxed strip -- and worse, the game
+    measures the canvas rather than the screen, so it lays out the desktop
+    three-pane view on a phone. Reading the real viewport is what makes the
+    compact layout trigger where it should.
+    """
+    try:
+        import platform as runtime  # pygbag replaces this with its own
+
+        window = getattr(runtime, "window", None)
+        if window is None:
+            return None
+
+        width = int(window.innerWidth)
+        height = int(window.innerHeight)
+        if width > 0 and height > 0:
+            return (width, height)
+    except Exception:
+        pass
     return None
 
 
@@ -164,12 +194,14 @@ async def run(seed: int | None = None) -> int:
         # the page, and asking for a mode it cannot give fails before
         # anything is drawn.
         flags = 0 if is_web() else pygame.RESIZABLE
-        screen = pygame.display.set_mode(SIZE, flags)
+        size = browser_viewport() or SIZE
+        screen = pygame.display.set_mode(size, flags)
 
         # The canvas may not be the size requested, so measure what arrived.
         # Laying out against a size we did not get puts the interface
         # off-screen, which looks identical to a crash.
-        app = App(screen.get_size(), Settings.load())
+        size = screen.get_size()
+        app = App(size, Settings.load())
         if seed is not None:
             from lechery.traits import default_character
 
@@ -177,10 +209,21 @@ async def run(seed: int | None = None) -> int:
 
         clock = pygame.time.Clock()
         running = True
+        frame = 0
         while running:
             dt = min(clock.tick(FPS) / 1000.0, MAX_STEP)
             running = app.step(screen, pygame.event.get(), dt)
             pygame.display.flip()
+
+            # A browser sends no resize event pygame can see, so the
+            # viewport is polled. This is what catches a phone rotating.
+            frame += 1
+            if frame % VIEWPORT_POLL == 0:
+                viewport = browser_viewport()
+                if viewport is not None and viewport != size:
+                    size = viewport
+                    screen = pygame.display.set_mode(size, flags)
+                    app.resize(screen.get_size())
 
             # Hand the frame back to the browser, every pass.
             await asyncio.sleep(0)
