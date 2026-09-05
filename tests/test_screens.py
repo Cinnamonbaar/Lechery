@@ -20,7 +20,7 @@ from lechery.stats import (  # noqa: E402
 )
 from lechery.ui.app import App  # noqa: E402
 from lechery.ui.screens.base import Screen  # noqa: E402
-from lechery.ui.screens.creation import STEPS, CharacterCreation  # noqa: E402
+from lechery.ui.screens.creation import FOOTER, STEPS, CharacterCreation  # noqa: E402
 from lechery.ui.screens.menu import MainMenu  # noqa: E402
 from lechery.ui.screens.play import PlayScreen  # noqa: E402
 
@@ -295,10 +295,44 @@ def test_every_step_draws_at_both_form_factors(app):
             creation.draw(surface)
 
 
-def test_the_doll_is_dropped_rather_than_shrunk_on_a_narrow_screen():
-    """A thumbnail of a body is not a preview of one."""
+def test_a_narrow_screen_stacks_the_doll_above_the_controls():
+    """The doll is why the sliders mean anything; it does not get dropped."""
     host = App((420, 860))
     creation = host.push(CharacterCreation())
-    doll_rect, controls = creation._columns()
-    assert doll_rect.width == 0
-    assert controls.width > 300
+    doll, controls = creation._columns()
+
+    assert creation.stacked
+    assert doll.width > 0
+    assert doll.bottom <= controls.top, "the doll sits above, not over"
+    assert controls.width == doll.width, "both use the full width"
+
+
+def test_a_wide_screen_puts_the_doll_beside_the_controls():
+    host = App((1280, 760))
+    creation = host.push(CharacterCreation())
+    doll, controls = creation._columns()
+
+    assert not creation.stacked
+    assert doll.right <= controls.left
+    assert doll.height == controls.height
+
+
+def test_the_stacked_doll_leaves_room_for_every_control():
+    """The failure this guards is sliders pushed off the bottom of a phone."""
+    for size in [(420, 860), (390, 700), (360, 640)]:
+        host = App(size)
+        creation = host.push(CharacterCreation())
+        creation.step = 1  # the body step, which has the most rows
+        creation._build()
+
+        _, controls = creation._columns()
+        assert controls.height > 0
+        lowest = max(w.rect.bottom for w in creation.widgets)
+        assert lowest <= host.window[1] - FOOTER, f"controls overflow at {size}"
+
+
+def test_the_stacked_band_shrinks_on_a_short_window():
+    """A landscape phone must not give the figure the whole screen."""
+    tall = App((420, 900)).push(CharacterCreation())._columns()[0]
+    short = App((420, 560)).push(CharacterCreation())._columns()[0]
+    assert short.height < tall.height

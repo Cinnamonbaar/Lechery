@@ -53,6 +53,15 @@ DOLL_WIDTH = 250
 ROW_GAP = 46
 FOOTER = 78
 
+#: Below this width the doll goes above the controls instead of beside them.
+STACK_BELOW = 760
+
+#: How much of the body a stacked doll band may take. Capped as a fraction
+#: as well as in pixels so a short landscape window does not give the figure
+#: the whole screen and leave the controls off the bottom.
+STACK_BAND = 190
+STACK_BAND_FRACTION = 0.32
+
 
 @dataclass
 class Step:
@@ -110,17 +119,28 @@ class CharacterCreation(Screen):
 
     # -- layout -----------------------------------------------------------
 
-    def _columns(self) -> tuple[pygame.Rect, pygame.Rect]:
-        """The doll column and the controls column.
+    @property
+    def stacked(self) -> bool:
+        """Whether the doll sits above the controls rather than beside them."""
+        return self.app.window[0] < STACK_BELOW
 
-        On a narrow screen the doll is dropped rather than shrunk: a
-        thumbnail of a body is not a preview of one, and the controls need
-        the width more.
+    def _columns(self) -> tuple[pygame.Rect, pygame.Rect]:
+        """The doll's area and the controls' area.
+
+        Side by side when there is width for it. When there is not, the doll
+        goes above rather than away -- it is the whole reason the sliders
+        mean anything, and a creation screen without it is a form.
         """
         width, height = self.app.window
         body = pygame.Rect(MARGIN, 120, width - MARGIN * 2, height - 120 - FOOTER)
-        if width < 760:
-            return pygame.Rect(0, 0, 0, 0), body
+
+        if self.stacked:
+            band = min(STACK_BAND, int(body.height * STACK_BAND_FRACTION))
+            doll = pygame.Rect(body.x, body.y, body.width, band)
+            controls = pygame.Rect(
+                body.x, doll.bottom + 12, body.width, body.height - band - 12
+            )
+            return doll, controls
 
         doll = pygame.Rect(body.x, body.y, DOLL_WIDTH, body.height)
         controls = pygame.Rect(
@@ -403,7 +423,21 @@ class CharacterCreation(Screen):
             colour = ACCENT if index <= self.step else RULE
             pygame.draw.circle(surface, colour, (x + index * 22, 58), 4)
 
+    def _identity_lines(self) -> list[tuple[str, tuple[int, int, int]]]:
+        character = self.character
+        return [
+            (self.name.strip() or "unnamed", TEXT),
+            (f"{character.gender} · {character.pronouns}", MUTED),
+            (f"read as {character.presentation().label}", MUTED),
+        ]
+
     def _draw_doll(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
+        if self.stacked:
+            self._draw_doll_banded(surface, rect)
+        else:
+            self._draw_doll_column(surface, rect)
+
+    def _draw_doll_column(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         height = min(rect.height - 90, int(rect.width * 1.5))
         width = int(height * 0.62)
         self.doll.resize((width, height))
@@ -411,15 +445,30 @@ class CharacterCreation(Screen):
         surface.blit(figure, figure.get_rect(midtop=(rect.centerx, rect.y)))
 
         y = rect.y + height + 14
-        character = self.character
-        name = self.name.strip() or "unnamed"
-        for line, colour in (
-            (name, TEXT),
-            (f"{character.gender} · {character.pronouns}", MUTED),
-            (f"read as {character.presentation().label}", MUTED),
-        ):
+        for line, colour in self._identity_lines():
             text = self.small.font.render(line, True, colour)
             surface.blit(text, text.get_rect(midtop=(rect.centerx, y)))
+            y += self.small.line_height + 2
+
+    def _draw_doll_banded(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
+        """Stacked: the figure at the left of the band, its lines beside it.
+
+        Putting the text alongside rather than underneath is what makes the
+        band affordable -- on a phone the vertical space it would otherwise
+        cost is space the sliders need.
+        """
+        height = rect.height
+        width = int(height * 0.62)
+        self.doll.resize((width, height))
+        figure = self.doll.surface()
+        surface.blit(figure, figure.get_rect(topleft=(rect.x, rect.y)))
+
+        lines = self._identity_lines()
+        block = len(lines) * (self.small.line_height + 2)
+        x = rect.x + width + 18
+        y = rect.centery - block // 2
+        for line, colour in lines:
+            surface.blit(self.small.font.render(line, True, colour), (x, y))
             y += self.small.line_height + 2
 
     def _draw_backstory(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
