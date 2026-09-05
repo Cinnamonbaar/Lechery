@@ -60,6 +60,13 @@ class PaperdollPanel(Panel):
         if self.avatar is not None:
             self.avatar.update(self.character)
             self.avatar.place(figure_rect)
+            if not avatar_module.ready():
+                # An empty box says nothing about why. This is the only
+                # report a phone can give, there being no console to read.
+                note = self.body_style.font.render(
+                    f"avatar: {avatar_module.status()}", True, KEY
+                )
+                surface.blit(note, note.get_rect(center=figure_rect.center))
         else:
             self.doll.resize((width, height))
             figure = self.doll.surface()

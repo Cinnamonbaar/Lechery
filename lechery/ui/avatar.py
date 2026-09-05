@@ -40,6 +40,18 @@ def ready() -> bool:
     return bool(dom.call("LecheryAvatar.ready"))
 
 
+def status() -> str:
+    """One word for what the library is doing, or why it is not.
+
+    There is no console on a phone, so a failure in the page is otherwise
+    completely silent -- the panel draws this instead of an empty box.
+    """
+    reported = dom.call("LecheryAvatar.status")
+    if reported is None:
+        return "unavailable"
+    return str(reported)
+
+
 # -- the mapping ----------------------------------------------------------
 
 

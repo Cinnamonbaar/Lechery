@@ -20,7 +20,9 @@
         player: null,
         pending: null,    // last update received before we were ready
         drawing: false,   // a draw is in flight; da.draw is async
-        again: false      // ...and another was asked for while it ran
+        again: false,     // ...and another was asked for while it ran
+        box: null,        // last requested placement, in CSS pixels
+        status: "starting"
     };
 
     function container() {
@@ -47,6 +49,19 @@
         offsetX: 0,
         offsetY: 0
     };
+
+    /* The group holds canvases at the library's own fixed size, so it is
+     * scaled to whatever box the game gives it. Applied separately from
+     * placement because the group does not exist until da.load() resolves,
+     * and the first placement almost always arrives before that. */
+    function fit() {
+        if (state.group === null || state.box === null) {
+            return;
+        }
+        state.group.style.transformOrigin = "top left";
+        state.group.style.transform = "scale(" +
+            Math.min(state.box.width / 700, state.box.height / 1200) + ")";
+    }
 
     function build(traits) {
         return new da.Player({
@@ -76,6 +91,7 @@
             }
         }).catch(function (error) {
             state.drawing = false;
+            state.status = "draw failed: " + (error && error.message ? error.message : error);
             console.error("avatar draw failed", error);
         });
     }
@@ -95,14 +111,15 @@
             element.style.width = width + "px";
             element.style.height = height + "px";
             element.style.display = "block";
-            if (state.group !== null) {
-                // The group holds stacked canvases at a fixed size; scaling
-                // the holder keeps the drawing crisp because each canvas is
-                // still rendered at its own resolution.
-                state.group.style.transformOrigin = "top left";
-                var scale = Math.min(width / 700, height / 1200);
-                state.group.style.transform = "scale(" + scale + ")";
-            }
+            state.box = {width: width, height: height};
+            fit();
+        },
+
+        /* What the library is doing, in one word the game can draw. There
+         * is no console on a phone, so this is the only way a failure here
+         * can be seen at all. */
+        status: function () {
+            return state.status;
         },
 
         hide: function () {
@@ -120,9 +137,14 @@
         },
 
         init: function () {
-            if (state.ready || typeof da === "undefined") {
+            if (state.ready) {
                 return;
             }
+            if (typeof da === "undefined") {
+                state.status = "no library";
+                return;
+            }
+            state.status = "loading";
             da.load().then(function () {
                 state.group = da.getCanvasGroup(CONTAINER_ID + "-group", {
                     width: 700,
@@ -130,11 +152,16 @@
                 });
                 container().appendChild(state.group);
                 state.ready = true;
+                state.status = "ready";
+                // The group only exists now, so any placement that arrived
+                // while loading has to be applied again.
+                fit();
                 if (state.pending !== null) {
                     api.update(state.pending);
                     state.pending = null;
                 }
             }).catch(function (error) {
+                state.status = "load failed: " + (error && error.message ? error.message : error);
                 console.error("avatar library failed to load", error);
             });
         }
