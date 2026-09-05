@@ -13,6 +13,7 @@
     "use strict";
 
     var CONTAINER_ID = "lechery-avatar";
+    var GROUP_ID = "lechery-avatar-group";
 
     var state = {
         ready: false,     // da.load() has resolved
@@ -146,11 +147,20 @@
             }
             state.status = "loading";
             da.load().then(function () {
-                state.group = da.getCanvasGroup(CONTAINER_ID + "-group", {
+                // getCanvasGroup looks the holder up by id and reads its
+                // style without checking -- its docstring claims it creates
+                // one, but it only creates the canvases inside. Passing an
+                // id that does not exist throws on null.
+                var holder = document.getElementById(GROUP_ID);
+                if (holder === null) {
+                    holder = document.createElement("div");
+                    holder.id = GROUP_ID;
+                    container().appendChild(holder);
+                }
+                state.group = da.getCanvasGroup(GROUP_ID, {
                     width: 700,
                     height: 1200
                 });
-                container().appendChild(state.group);
                 state.ready = true;
                 state.status = "ready";
                 // The group only exists now, so any placement that arrived
