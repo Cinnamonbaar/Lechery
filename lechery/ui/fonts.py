@@ -17,6 +17,8 @@ from typing import Optional
 
 import pygame
 
+from ..platform import is_web
+
 #: Drop .ttf files here and name them below to use real typography. The
 #: game runs without them; it just looks more generic.
 FONT_DIR = Path(__file__).resolve().parent.parent.parent / "assets" / "fonts"
@@ -35,17 +37,62 @@ _cache: dict[tuple[str, int, bool], pygame.font.Font] = {}
 
 
 def load(role: str, size: int, bold: bool = False) -> pygame.font.Font:
-    """A font for `role`, cached. Never raises; always returns something."""
+    """A font for `role`, cached.
+
+    Tries every source before giving up, and gives up loudly. A font that
+    silently fails to load takes the whole interface with it, and in a
+    browser that shows up as a blank canvas with no explanation -- so the
+    last resort is an exception carrying the reason, not a None that
+    crashes somewhere less informative.
+    """
     key = (role, size, bold)
     cached = _cache.get(key)
     if cached is not None:
         return cached
 
-    font = _bundled(role, size) or _system(size, bold) or pygame.font.Font(None, size)
-    if bold:
-        font.set_bold(True)
-    _cache[key] = font
-    return font
+    for source in _sources(role, size, bold):
+        font = source()
+        if font is not None:
+            if bold:
+                font.set_bold(True)
+            _cache[key] = font
+            return font
+
+    raise RuntimeError(
+        f"no font available for {role!r} at {size}px: no bundled file, "
+        f"no system font, and pygame's own default font failed to load"
+    )
+
+
+def _sources(role: str, size: int, bold: bool):
+    """Font sources to try, best first.
+
+    The order differs by platform. On a desktop an OS font is a real
+    improvement over pygame's default, so it comes first. In a browser
+    there is no OS font list, so pygame's bundled default leads and
+    SysFont is only a last resort -- it will almost certainly fail there,
+    but a failing last resort is better than no last resort.
+    """
+    def bundled():
+        return _bundled(role, size)
+
+    def default():
+        return _default(size)
+
+    def system():
+        return _system(size, bold)
+
+    if is_web():
+        return (bundled, default, system)
+    return (bundled, system, default)
+
+
+def _default(size: int) -> Optional[pygame.font.Font]:
+    """pygame's own font, shipped inside the wheel."""
+    try:
+        return pygame.font.Font(None, size)
+    except (OSError, pygame.error):
+        return None
 
 
 def _bundled(role: str, size: int) -> Optional[pygame.font.Font]:
@@ -62,10 +109,6 @@ def _bundled(role: str, size: int) -> Optional[pygame.font.Font]:
 
 
 def _system(size: int, bold: bool) -> Optional[pygame.font.Font]:
-    from ..platform import is_web
-
-    if is_web():
-        return None  # there is no system to ask
     try:
         return pygame.font.SysFont(SYSTEM_FALLBACK, size, bold=bold)
     except (OSError, pygame.error):

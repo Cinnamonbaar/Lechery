@@ -192,3 +192,63 @@ def test_a_long_frame_cannot_tunnel_the_player_through_a_wall():
         session.room_map.tilemap, session.player.position, session.player.half_extents
     )
     assert session.player.position != before
+
+
+# -- startup robustness ---------------------------------------------------
+
+
+def test_a_seed_is_only_taken_from_an_argument_that_is_a_number():
+    """argv is not ours in a web build: pygbag passes what it likes.
+
+    int() on that would raise before the first frame, which in a browser
+    is a blank canvas and no explanation.
+    """
+    import main as entry
+
+    assert entry.parse_seed([]) is None
+    assert entry.parse_seed(["1234"]) == 1234
+    assert entry.parse_seed(["/data/data/org.python/assets/main.py"]) is None
+    assert entry.parse_seed(["--dev", "main.py", "77"]) == 77
+
+
+def test_fonts_prefer_pygames_own_default_in_a_web_build(pretend_web):
+    """There is no OS font list in WASM, so SysFont is a last resort there."""
+    order = [source.__name__ for source in fonts._sources("body", 15, False)]
+    assert order.index("default") < order.index("system")
+
+
+def test_fonts_prefer_a_system_font_on_the_desktop():
+    """An OS font is a real improvement over pygame's default."""
+    order = [source.__name__ for source in fonts._sources("body", 15, False)]
+    assert order.index("system") < order.index("default")
+
+
+def test_font_loading_raises_with_a_reason_when_every_source_fails(monkeypatch):
+    """A silent font failure takes the interface with it and explains nothing."""
+    monkeypatch.setattr(fonts, "_bundled", lambda role, size: None)
+    monkeypatch.setattr(fonts, "_default", lambda size: None)
+    monkeypatch.setattr(fonts, "_system", lambda size, bold: None)
+    fonts.clear_cache()
+
+    with pytest.raises(RuntimeError, match="no font available"):
+        fonts.load("body", 15)
+    fonts.clear_cache()
+
+
+def test_a_crash_paints_the_screen_rather_than_leaving_it_blank():
+    """The whole point: a browser shows nothing for an unhandled exception."""
+    import asyncio
+
+    import main as entry
+
+    surface = pygame.display.get_surface()
+    surface.fill((0, 0, 0))
+
+    async def drive():
+        # show_crash never returns, so it is raced against a timeout.
+        task = asyncio.ensure_future(entry.show_crash(surface, "Traceback: boom"))
+        await asyncio.sleep(0)
+        task.cancel()
+
+    asyncio.run(drive())
+    assert surface.get_at((5, 5))[:3] == entry.CRASH_BG, "the canvas should be painted"
