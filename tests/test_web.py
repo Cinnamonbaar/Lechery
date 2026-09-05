@@ -20,14 +20,6 @@ from lechery.settings import Settings, default_path  # noqa: E402
 from lechery.ui import fonts  # noqa: E402
 
 
-@pytest.fixture(scope="module", autouse=True)
-def display():
-    pygame.init()
-    pygame.display.set_mode((1280, 760))
-    yield
-    pygame.quit()
-
-
 @pytest.fixture
 def pretend_web(monkeypatch):
     monkeypatch.setattr(platform.sys, "platform", "emscripten")
@@ -91,19 +83,57 @@ def test_a_frame_runs_without_a_loop_around_it():
     from lechery.ui.app import App
 
     surface = pygame.display.get_surface()
-    app = App(Session.new_game(1234), surface.get_size())
+    app = App(surface.get_size())
     assert app.step(surface, [], 1 / 60) is True
 
 
-def test_quit_and_escape_stop_the_loop():
+def test_closing_the_window_stops_the_loop():
     from lechery.ui.app import App
 
     surface = pygame.display.get_surface()
-    app = App(Session.new_game(1234), surface.get_size())
+    app = App(surface.get_size())
     assert app.step(surface, [pygame.event.Event(pygame.QUIT)], 1 / 60) is False
+
+
+def test_escape_in_play_returns_to_the_menu_rather_than_quitting():
+    """Escape used to quit the game. With a menu on the stack it should not."""
+    from lechery.traits import default_character
+    from lechery.ui.app import App
+    from lechery.ui.screens.menu import MainMenu
+
+    surface = pygame.display.get_surface()
+    app = App(surface.get_size())
+    app.push(_Blank())
+    app.start_game(default_character("Test"), seed=1234)
+
     assert app.step(
         surface, [pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)], 1 / 60
-    ) is False
+    ) is True
+    assert isinstance(app.screen, MainMenu)
+
+
+class _Blank:
+    """Stands in for the creation screen, which start_game replaces."""
+
+    transparent = False
+
+    def enter(self, app):
+        self.app = app
+
+    def leave(self):
+        pass
+
+    def resize(self, window):
+        pass
+
+    def handle_event(self, event):
+        return False
+
+    def update(self, dt):
+        pass
+
+    def draw(self, surface):
+        pass
 
 
 def test_the_entry_point_is_a_coroutine():
@@ -131,6 +161,9 @@ def test_the_real_loop_yields_to_the_browser_every_frame(monkeypatch):
         def step(self, surface, events, dt):
             frames["count"] += 1
             return frames["count"] < 3
+
+        def start_game(self, *args, **kwargs):
+            pass
 
     async def counting_sleep(delay):
         assert delay == 0, "the yield must not stall the frame"

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from ..stats import Skills, StatBlock
 from .identity import GENDERS, THEY, Gender, Pronouns
 from .palette import colour
 from .perception import CLOTHED, Read, Visibility, perceive, presentation
@@ -19,6 +20,15 @@ class Character:
     #: Set to override the pronouns the gender would imply. Kept separate so
     #: a character can change gender without losing a chosen pronoun set.
     pronoun_override: Optional[Pronouns] = None
+
+    #: Capability, as opposed to body. A transformation changes traits and
+    #: must not silently make you better at arguing; when content wants both
+    #: to move it says so.
+    stats: StatBlock = field(default_factory=StatBlock)
+    skills: Skills = field(default_factory=Skills)
+
+    #: Who they were before they were pulled here.
+    backstory_id: Optional[str] = None
 
     #: How clothing, manner and grooming push the read, from -1 (masculine)
     #: to +1 (feminine). Not a trait: a character can change how they dress

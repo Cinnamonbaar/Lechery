@@ -39,9 +39,10 @@ class Session:
         self.player.position = self.level.spawn_center(start.id)
 
     @classmethod
-    def new_game(cls, seed: Optional[int] = None) -> "Session":
+    def new_game(cls, seed: Optional[int] = None, character=None) -> "Session":
         world, levels = new_world(seed)
-        return cls(world, levels, Player())
+        player = Player(character=character) if character is not None else Player()
+        return cls(world, levels, player)
 
     # -- frame ------------------------------------------------------------
 

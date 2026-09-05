@@ -13,8 +13,12 @@ python main.py            # a random world
 python main.py 1234       # replay a specific seed
 ```
 
+`python main.py` opens the menu; a seed on the command line skips straight
+into the world with a default character, for iterating on generation.
+
 **Controls** — WASD or arrows to move, mouse to look, `[` and `]` toggle the
-side bars, `F5` cycles the layout (auto / wide / compact), `Esc` quits.
+side bars, `F5` cycles the layout (auto / wide / compact), `Esc` returns to
+the menu.
 
 ## Development
 
@@ -56,7 +60,9 @@ Two constraints the web build puts on the code, both already handled:
 | `lechery/space` | Tilemaps, carving, collision. Geometry, not rendering. |
 | `lechery/entities` | Bodies that occupy and move through space. |
 | `lechery/ui` | Everything that imports pygame, and nothing else does. |
-| `lechery/content` | The actual game: areas, rooms, prose. |
+| `lechery/stats.py` | Stats and skills: capability, as opposed to body. |
+| `lechery/ui/screens` | Menu, character creation, play. |
+| `lechery/content` | The actual game: areas, rooms, backstories, prose. |
 
 Only `lechery/ui` imports pygame. Everything else is plain Python, which is
 why the whole simulation is testable without a display.

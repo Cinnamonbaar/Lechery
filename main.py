@@ -19,7 +19,6 @@ import sys
 
 import pygame
 
-from lechery.session import Session
 from lechery.settings import Settings
 from lechery.ui.app import App
 
@@ -38,9 +37,13 @@ async def run(seed: int | None = None) -> int:
     screen = pygame.display.set_mode(SIZE, pygame.RESIZABLE)
     clock = pygame.time.Clock()
 
-    session = Session.new_game(seed)
-    print(f"seed: {session.world.seed}")
-    app = App(session, SIZE, Settings.load())
+    app = App(SIZE, Settings.load())
+    if seed is not None:
+        # A seed on the command line skips the menu, for iterating on the
+        # world without clicking through creation every time.
+        from lechery.traits import default_character
+
+        app.start_game(default_character(), seed=seed)
 
     running = True
     while running:

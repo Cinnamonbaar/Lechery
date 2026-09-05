@@ -200,14 +200,6 @@ def test_narration_returns_none_for_traits_it_has_no_line_for(character):
 # -- the paperdoll reads the character ------------------------------------
 
 
-@pytest.fixture(scope="module", autouse=True)
-def display():
-    pygame.init()
-    pygame.display.set_mode((1280, 760))
-    yield
-    pygame.quit()
-
-
 def test_the_doll_recomposites_when_a_trait_changes(character):
     from lechery.ui.paperdoll import Paperdoll
 

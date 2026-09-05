@@ -25,14 +25,6 @@ from lechery.ui.profile import FormFactor, measure, resolve  # noqa: E402
 from lechery.settings import LayoutMode, Settings  # noqa: E402
 
 
-@pytest.fixture(scope="module", autouse=True)
-def display():
-    pygame.init()
-    pygame.display.set_mode((1280, 760))
-    yield
-    pygame.quit()
-
-
 # -- layout ---------------------------------------------------------------
 
 
@@ -140,31 +132,31 @@ def test_paperdoll_rejects_an_unknown_slot():
 
 
 def test_app_draws_every_pane_without_error():
-    from lechery.ui.app import App
+    from lechery.ui.screens.play import PlayScreen
 
     surface = pygame.display.get_surface()
     session = Session.new_game(1234)
-    app = App(session, surface.get_size())
+    screen = PlayScreen(session, surface.get_size())
 
-    app.draw(surface)
-    app.layout.toggle_left()
-    app.layout.toggle_right()
-    app.draw(surface)
+    screen.draw(surface)
+    screen.layout.toggle_left()
+    screen.layout.toggle_right()
+    screen.draw(surface)
 
 
 def test_the_world_view_measures_the_centre_pane_not_the_window():
     """Otherwise a collapsed bar would shift the framing of every room."""
-    from lechery.ui.app import App
+    from lechery.ui.screens.play import PlayScreen
 
     surface = pygame.display.get_surface()
-    app = App(Session.new_game(1234), surface.get_size())
+    screen = PlayScreen(Session.new_game(1234), surface.get_size())
 
-    app.draw(surface)
-    framed = app.world.camera_offset()
-    app.layout.toggle_left()
-    app.draw(surface)
-    assert app.world.camera_offset() != framed
-    assert app.world.rect == app.layout.center
+    screen.draw(surface)
+    framed = screen.world.camera_offset()
+    screen.layout.toggle_left()
+    screen.draw(surface)
+    assert screen.world.camera_offset() != framed
+    assert screen.world.rect == screen.layout.center
 
 
 # -- form factor ----------------------------------------------------------
@@ -235,53 +227,53 @@ def test_compact_handles_are_finger_sized_and_do_not_overlap():
 
 
 def test_the_app_switches_layout_when_the_window_changes_shape():
-    from lechery.ui.app import App
+    from lechery.ui.screens.play import PlayScreen
 
-    app = App(Session.new_game(1234), (1280, 760))
-    assert app.form is FormFactor.WIDE
+    screen = PlayScreen(Session.new_game(1234), (1280, 760))
+    assert screen.form is FormFactor.WIDE
 
-    app.handle_event(pygame.event.Event(pygame.VIDEORESIZE, w=390, h=844))
-    assert app.form is FormFactor.COMPACT
-    assert app.layout.overlays
+    screen.handle_event(pygame.event.Event(pygame.VIDEORESIZE, w=390, h=844))
+    assert screen.form is FormFactor.COMPACT
+    assert screen.layout.overlays
 
 
 def test_resizing_within_one_form_factor_keeps_the_open_drawers():
     """Rebuilding the layout on every resize would discard the arrangement."""
-    from lechery.ui.app import App
+    from lechery.ui.screens.play import PlayScreen
 
-    app = App(Session.new_game(1234), (390, 844))
-    app.layout.toggle_right()
-    app.handle_event(pygame.event.Event(pygame.VIDEORESIZE, w=400, h=860))
-    assert app.layout.right_open
+    screen = PlayScreen(Session.new_game(1234), (390, 844))
+    screen.layout.toggle_right()
+    screen.handle_event(pygame.event.Event(pygame.VIDEORESIZE, w=400, h=860))
+    assert screen.layout.right_open
 
 
 def test_the_layout_override_survives_a_resize_that_would_change_it():
-    from lechery.ui.app import App
+    from lechery.ui.screens.play import PlayScreen
 
     settings = Settings(layout_mode=LayoutMode.WIDE)
-    app = App(Session.new_game(1234), (1280, 760), settings)
-    app.handle_event(pygame.event.Event(pygame.VIDEORESIZE, w=390, h=844))
-    assert app.form is FormFactor.WIDE, "a stated preference is not second-guessed"
+    screen = PlayScreen(Session.new_game(1234), (1280, 760), settings)
+    screen.handle_event(pygame.event.Event(pygame.VIDEORESIZE, w=390, h=844))
+    assert screen.form is FormFactor.WIDE, "a stated preference is not second-guessed"
 
 
 def test_touch_controls_follow_the_layout_unless_forced():
-    from lechery.ui.app import App
+    from lechery.ui.screens.play import PlayScreen
 
-    assert not App(Session.new_game(1), (1280, 760)).uses_touch_controls
-    assert App(Session.new_game(1), (390, 844)).uses_touch_controls
-    forced = App(Session.new_game(1), (1280, 760), Settings(touch_controls=True))
+    assert not PlayScreen(Session.new_game(1), (1280, 760)).uses_touch_controls
+    assert PlayScreen(Session.new_game(1), (390, 844)).uses_touch_controls
+    forced = PlayScreen(Session.new_game(1), (1280, 760), Settings(touch_controls=True))
     assert forced.uses_touch_controls
 
 
 def test_app_draws_both_layouts_without_error():
-    from lechery.ui.app import App
+    from lechery.ui.screens.play import PlayScreen
 
     surface = pygame.display.get_surface()
     for size in [(1280, 760), (390, 844)]:
-        app = App(Session.new_game(1234), size)
-        app.draw(surface)
-        app.layout.toggle_right()
-        app.draw(surface)
+        screen = PlayScreen(Session.new_game(1234), size)
+        screen.draw(surface)
+        screen.layout.toggle_right()
+        screen.draw(surface)
 
 
 # -- thumbstick -----------------------------------------------------------
@@ -346,13 +338,13 @@ def test_releasing_the_stick_stops_movement():
 
 def test_moving_with_the_stick_turns_the_body_to_face_travel():
     """Without a cursor there is nothing else to aim by."""
-    from lechery.ui.app import App
+    from lechery.ui.screens.play import PlayScreen
 
-    app = App(Session.new_game(1234), (390, 844))
-    app.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(100, 700)))
-    app.handle_event(pygame.event.Event(pygame.MOUSEMOTION, pos=(160, 700)))
-    app.update(1 / 60)
-    assert abs(app.session.player.facing) < 1e-6  # facing east
+    screen = PlayScreen(Session.new_game(1234), (390, 844))
+    screen.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(100, 700)))
+    screen.handle_event(pygame.event.Event(pygame.MOUSEMOTION, pos=(160, 700)))
+    screen.update(1 / 60)
+    assert abs(screen.session.player.facing) < 1e-6  # facing east
 
 
 # -- settings -------------------------------------------------------------
