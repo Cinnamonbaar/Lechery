@@ -1,0 +1,90 @@
+/*
+ * The whole look of the game, in one file.
+ *
+ * Every colour, size and radius the UI uses is a custom property declared
+ * here. Components reference the properties and never hard-code a value, so
+ * retheming is editing this file and nothing else -- including the world
+ * canvas, which reads the --world-* properties through ui/theme.ts.
+ */
+
+:root {
+  /* -- palette --------------------------------------------------------- */
+  --ink: #ece8f4;
+  --ink-dim: #a29cb4;
+  --ink-faint: #6f6982;
+
+  --ground: #100f16;
+  --panel: #191722;
+  --panel-raised: #221f2e;
+  --panel-edge: #2e2a3c;
+
+  --accent: #c2708f;
+  --accent-soft: #8f5a78;
+  --accent-ink: #1a0f16;
+  --warning: #d9a05b;
+
+  /* -- the world canvas ------------------------------------------------ */
+  --world-void: #0a0910;
+  --world-floor: #2b2a33;
+  --world-floor-alt: #31303a;
+  --world-wall: #26232f;
+  --world-wall-top: #4b4759;
+  --world-doorway: #4a4356;
+  --world-trap: #6d3a5d;
+  --world-portal: #d2a95f;
+  --world-player: #8d8a99;
+  --world-player-edge: #cbc7d8;
+
+  /* -- type ------------------------------------------------------------ */
+  --font-body: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+    "Times New Roman", serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* 16px is a floor, not a preference: iOS Safari zooms the page when a
+   * focused input is smaller, which throws the whole layout off. */
+  --font-size: 16px;
+  --font-size-small: 14px;
+  --font-size-title: 20px;
+  --line-height: 1.55;
+
+  /* -- metrics --------------------------------------------------------- */
+  --gap: 12px;
+  --gap-tight: 8px;
+  --radius: 10px;
+  --radius-small: 6px;
+  --bar-left: 260px;
+  --bar-right: 320px;
+  --control-height: 44px; /* a comfortable thumb target */
+  --stick-radius: 62px;
+
+  --shadow: 0 8px 24px rgb(0 0 0 / 45%);
+  --transition: 160ms ease;
+
+  color-scheme: dark;
+}
+
+/*
+ * A light theme, for the one player who wants it. Only the properties that
+ * must differ are restated: everything else inherits from above, which is the
+ * point of keeping the palette in variables rather than in rules.
+ */
+:root[data-theme="light"] {
+  --ink: #201c28;
+  --ink-dim: #5b5468;
+  --ink-faint: #8b849c;
+  --ground: #efecf3;
+  --panel: #fbfaFD;
+  --panel-raised: #ffffff;
+  --panel-edge: #d9d4e2;
+  --accent: #96496a;
+  --accent-ink: #fff;
+  --world-void: #cfc9d8;
+  --world-floor: #ddd7e6;
+  --world-floor-alt: #e6e1ee;
+  --world-wall: #8e879d;
+  --world-wall-top: #a49db4;
+  --world-doorway: #b9b0c9;
+  --world-player: #4c4759;
+  --world-player-edge: #241f2f;
+  --shadow: 0 8px 24px rgb(40 30 60 / 18%);
+  color-scheme: light;
+}
