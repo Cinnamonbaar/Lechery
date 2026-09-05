@@ -25,6 +25,7 @@ about it are deliberate:
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 import traceback
 
@@ -266,6 +267,17 @@ async def run(seed: int | None = None) -> int:
 
     screen = None
     try:
+        # SDL captures keyboard events at the window level by default and
+        # calls preventDefault on them, to stop browser shortcuts firing
+        # mid-game. That also swallows keystrokes before a focused HTML
+        # input can see them, which is why the name field could be tapped
+        # and focused and still receive nothing. Scoping the capture to the
+        # canvas leaves anything overlaid on it alone.
+        #
+        # Must be set before pygame.init(): SDL reads its hints once.
+        if is_web():
+            os.environ.setdefault("SDL_EMSCRIPTEN_KEYBOARD_ELEMENT", "#canvas")
+
         pygame.init()
         pygame.display.set_caption("Lechery")
 

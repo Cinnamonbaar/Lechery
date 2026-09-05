@@ -374,7 +374,8 @@ def test_a_tap_reaching_the_canvas_falls_back_to_the_browser_dialog(monkeypatch)
     field = TextField(
         pygame.Rect(0, 0, 200, 32), "Name", TextStyle(load_font("body", 15))
     )
-    # Pretend an element exists but is not catching taps.
+    # Pretend we are in a browser whose overlay is not catching taps.
+    field.in_browser = True
     field.native = type("Stub", (), {"element": None})()
     monkeypatch.setattr(widgets, "ask_text", lambda prompt, initial: "Ilse")
 
@@ -391,6 +392,7 @@ def test_a_cancelled_dialog_leaves_the_name_alone(monkeypatch):
     field = TextField(
         pygame.Rect(0, 0, 200, 32), "Name", TextStyle(load_font("body", 15)), text="Rell"
     )
+    field.in_browser = True
     field.native = type("Stub", (), {"element": None})()
     monkeypatch.setattr(widgets, "ask_text", lambda prompt, initial: None)
 
@@ -407,6 +409,7 @@ def test_the_dialog_respects_the_field_length_limit(monkeypatch):
     field = TextField(
         pygame.Rect(0, 0, 200, 32), "Name", TextStyle(load_font("body", 15)), max_length=5
     )
+    field.in_browser = True
     field.native = type("Stub", (), {"element": None})()
     monkeypatch.setattr(widgets, "ask_text", lambda prompt, initial: "x" * 99)
 
@@ -424,3 +427,21 @@ def test_widgets_release_their_page_elements_when_a_screen_rebuilds(app):
 
     creation._build()
     assert destroyed, "the old widgets should have been released"
+
+
+def test_the_dialog_answers_even_with_no_overlay_element(monkeypatch):
+    """Turning the overlay off must leave the field usable, not dead."""
+    from lechery.ui import widgets
+    from lechery.ui.fonts import load as load_font
+    from lechery.ui.text import TextStyle
+    from lechery.ui.widgets import TextField
+
+    field = TextField(
+        pygame.Rect(0, 0, 200, 32), "Name", TextStyle(load_font("body", 15))
+    )
+    field.in_browser = True  # a browser, but no overlay was created
+    assert field.native is None
+    monkeypatch.setattr(widgets, "ask_text", lambda prompt, initial: "Rell")
+
+    assert field.handle_event(click(field.rect.center)) is True
+    assert field.text == "Rell"

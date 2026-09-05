@@ -15,7 +15,12 @@ import pygame
 
 from . import metrics
 from .metrics import px
-from .nativetext import NativeInput, ask_text, available as native_available
+from .nativetext import (
+    NativeInput,
+    ask_text,
+    available as native_available,
+    in_browser,
+)
 from .text import TextStyle, wrap
 
 TEXT = (206, 200, 196)
@@ -276,6 +281,10 @@ class TextField(Widget):
 
         # In a browser the text is edited in a real input element laid over
         # this rect; there is no way to raise a phone keyboard otherwise.
+        # Whether or not that element exists, a tap that reaches pygame in a
+        # browser is handled by the prompt dialog -- so the field stays
+        # usable if the overlay is disabled or fails to receive input.
+        self.in_browser = in_browser()
         self.native: Optional[NativeInput] = None
         if native_available():
             self.native = NativeInput(
@@ -329,13 +338,12 @@ class TextField(Widget):
     def handle_event(self, event: pygame.event.Event) -> bool:
         super().handle_event(event)
 
-        if self.native is not None:
-            # Normally the element receives the tap itself and pygame never
-            # sees it. A tap arriving *here* therefore means the element did
-            # not get it -- wrong stacking order, or a browser routing taps
-            # to the canvas regardless. Rather than leave the field dead,
-            # fall back to the browser's own dialog: whichever path actually
-            # receives the tap is the one that handles it.
+        if self.in_browser:
+            # With an overlay, the element takes the tap and pygame never
+            # sees it. A tap arriving *here* means it did not -- no overlay,
+            # wrong stacking, or a browser routing taps to the canvas
+            # anyway. Either way the dialog handles it, so whichever path
+            # receives the tap is the one that answers.
             if (
                 event.type == pygame.MOUSEBUTTONDOWN
                 and event.button == 1

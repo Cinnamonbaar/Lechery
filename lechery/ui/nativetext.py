@@ -124,8 +124,21 @@ def ask_text(prompt: str, initial: str = "") -> Optional[str]:
     return None if result is None else str(result)
 
 
-def available() -> bool:
+#: Whether to overlay a real input on the canvas. Turning this off falls
+#: back to the browser's prompt dialog for every field -- less pleasant,
+#: but it depends on nothing about stacking order or event routing, so it
+#: is the switch to reach for if the overlay ever stops receiving input.
+USE_OVERLAY = True
+
+
+def in_browser() -> bool:
+    """Whether there is a page to put elements on, or dialogs in."""
     return browser_document() is not None
+
+
+def available() -> bool:
+    """Whether to overlay an input element for a text field."""
+    return USE_OVERLAY and in_browser()
 
 
 def css_geometry(rect) -> tuple[float, float, float, float]:
