@@ -160,3 +160,63 @@ def test_a_retina_phone_still_gets_finger_sized_touch_targets(at_3x):
 
     layout = CompactLayout(window=(1170, 2532))
     assert layout.left_handle.width >= metrics.px(44)
+
+
+# -- page coordinates -----------------------------------------------------
+
+
+def test_page_geometry_converts_device_pixels_to_css_pixels(at_3x):
+    """The bug this caught, exactly.
+
+    `from .metrics import SCALE` binds the value at import, so set_scale was
+    never seen and the input element was positioned at three times its
+    coordinates -- off the bottom of the page, where nothing could tap it.
+    """
+    from lechery.ui.nativetext import css_geometry
+
+    left, top, width, height = css_geometry(pygame.Rect(270, 1100, 600, 96))
+    assert (left, top, width, height) == (90, 1100 / 3, 200, 32)
+
+
+def test_page_geometry_is_identity_at_1x():
+    from lechery.ui.nativetext import css_geometry
+
+    assert css_geometry(pygame.Rect(10, 20, 30, 40)) == (10, 20, 30, 40)
+
+
+def test_the_name_field_lands_on_screen_on_a_phone(at_3x):
+    """End to end: whatever the field's device rect, its CSS box is on the page."""
+    from lechery.ui.app import App
+    from lechery.ui.nativetext import css_geometry
+    from lechery.ui.screens.creation import CharacterCreation
+
+    viewport = (390, 844)
+    window = (viewport[0] * 3, viewport[1] * 3)
+    app = App(window)
+    creation = app.push(CharacterCreation())
+
+    field = creation.widgets[0]
+    left, top, width, height = css_geometry(field.rect)
+
+    assert 0 <= left and left + width <= viewport[0], "field runs off the side"
+    assert 0 <= top and top + height <= viewport[1], "field runs off the bottom"
+
+
+def test_no_module_binds_the_scale_at_import_time():
+    """The whole class of bug: a stale copy of a value that changes.
+
+    Checked structurally, because a stale binding behaves perfectly at 1x
+    and only breaks on a device nobody testing has to hand.
+    """
+    import ast
+    import pathlib
+
+    ui = pathlib.Path(__file__).resolve().parent.parent / "lechery" / "ui"
+    for path in ui.rglob("*.py"):
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module and "metrics" in node.module:
+                imported = {alias.name for alias in node.names}
+                assert "SCALE" not in imported, (
+                    f"{path.name} binds SCALE at import; read metrics.SCALE instead"
+                )

@@ -21,7 +21,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .metrics import SCALE
+# The module, not the value: `from .metrics import SCALE` binds whatever
+# the scale was at import time, and set_scale would never be seen here --
+# which put this element at three times its coordinates on a phone, off the
+# bottom of the page where nothing could tap it.
+from . import metrics
 
 #: Above the canvas, whatever it claims for itself. SDL styles the canvas
 #: without asking, so competing politely here just loses the tap.
@@ -90,6 +94,18 @@ def available() -> bool:
     return browser_document() is not None
 
 
+def css_geometry(rect) -> tuple[float, float, float, float]:
+    """A device-pixel rect as CSS pixels: (left, top, width, height).
+
+    The one place the two coordinate systems meet. The page lays out in CSS
+    pixels while the canvas is drawn at device resolution, so an element
+    positioned with raw canvas coordinates lands at scale-times its
+    intended place -- off-screen on any phone.
+    """
+    scale = metrics.SCALE or 1.0
+    return (rect.x / scale, rect.y / scale, rect.width / scale, rect.height / scale)
+
+
 class NativeInput:
     """An <input> element tracking one on-canvas text field."""
 
@@ -154,21 +170,17 @@ class NativeInput:
     # -- geometry ---------------------------------------------------------
 
     def move(self, rect) -> None:
-        """Place the element over `rect`, which is in device pixels.
-
-        The page lays out in CSS pixels, so the rect is divided back down by
-        the display scale -- the one place the two coordinate systems have
-        to meet.
-        """
+        """Place the element over `rect`, which is in device pixels."""
         if self.element is None or rect == self._rect:
             return
         self._rect = rect
+        left, top, width, height = css_geometry(rect)
         try:
             style = self.element.style
-            style.left = f"{rect.x / SCALE:.1f}px"
-            style.top = f"{rect.y / SCALE:.1f}px"
-            style.width = f"{rect.width / SCALE:.1f}px"
-            style.height = f"{rect.height / SCALE:.1f}px"
+            style.left = f"{left:.1f}px"
+            style.top = f"{top:.1f}px"
+            style.width = f"{width:.1f}px"
+            style.height = f"{height:.1f}px"
         except Exception:
             pass
 

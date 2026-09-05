@@ -13,6 +13,7 @@ from typing import Callable, Optional, Sequence
 
 import pygame
 
+from . import metrics
 from .metrics import px
 from .nativetext import NativeInput, ask_text, available as native_available
 from .text import TextStyle, wrap
@@ -283,7 +284,9 @@ class TextField(Widget):
                 max_length=max_length,
                 placeholder=placeholder,
                 colour="#cec8c4",
-                font_size=style.font.get_height(),
+                # The font was built at device resolution; the page wants
+                # CSS pixels, same as the geometry.
+                font_size=round(style.font.get_height() / max(metrics.SCALE, 1.0)),
             )
 
     def _ask_with_dialog(self) -> None:
