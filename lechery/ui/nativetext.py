@@ -23,21 +23,67 @@ from typing import Optional
 
 from .metrics import SCALE
 
-#: Sits above the canvas. The canvas draws the field's frame underneath.
-Z_INDEX = 10
+#: Above the canvas, whatever it claims for itself. SDL styles the canvas
+#: without asking, so competing politely here just loses the tap.
+Z_INDEX = 2147483000
+
+
+def browser_window():
+    """pygbag's handle on the browser window, or None."""
+    try:
+        import platform as runtime  # pygbag replaces this with its own
+
+        return getattr(runtime, "window", None)
+    except Exception:
+        return None
 
 
 def browser_document():
     """The page's document, or None when not running in a browser."""
+    window = browser_window()
+    if window is None:
+        return None
     try:
-        import platform as runtime  # pygbag replaces this with its own
-
-        window = getattr(runtime, "window", None)
-        if window is None:
-            return None
         return window.document
     except Exception:
         return None
+
+
+def game_canvas():
+    """The canvas pygbag is drawing into.
+
+    pygbag hangs it off the window directly, which is more dependable than
+    guessing an element id -- the id is a template detail and has changed.
+    """
+    window = browser_window()
+    if window is None:
+        return None
+    try:
+        canvas = getattr(window, "canvas", None)
+        if canvas is not None:
+            return canvas
+        return window.document.getElementById("canvas")
+    except Exception:
+        return None
+
+
+def ask_text(prompt: str, initial: str = "") -> Optional[str]:
+    """Ask for a line of text with the browser's own dialog.
+
+    The fallback for when the overlaid input does not receive the tap. It
+    is uglier than an inline field and it blocks the frame, but a native
+    dialog raises the keyboard on every platform without depending on
+    stacking order or event routing -- so it works exactly in the case
+    where the nicer path has failed.
+    """
+    window = browser_window()
+    if window is None:
+        return None
+    try:
+        result = window.prompt(prompt, initial)
+    except Exception:
+        return None
+    return None if result is None else str(result)
 
 
 def available() -> bool:
@@ -77,9 +123,19 @@ class NativeInput:
             style = element.style
             style.position = "fixed"
             style.zIndex = str(Z_INDEX)
-            style.background = "transparent"
-            style.border = "0"
+            # Made visible rather than transparent: an invisible element
+            # that is not receiving taps is indistinguishable from one that
+            # was never created, and this has to be diagnosable from a
+            # screenshot.
+            style.background = "#1a171f"
+            style.border = "1px solid #3a3442"
+            style.borderRadius = "4px"
             style.outline = "none"
+            # Both are needed on iOS: without them the element can be
+            # painted above the canvas and still route its taps below.
+            style.pointerEvents = "auto"
+            style.touchAction = "manipulation"
+            style.webkitUserSelect = "text"
             style.color = colour
             style.caretColor = "#dec088"
             style.fontFamily = "Georgia, serif"

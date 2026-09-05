@@ -111,7 +111,9 @@ def match_canvas_to_page(size: tuple[int, int], viewport: tuple[int, int]) -> No
     if window is None:
         return
     try:
-        canvas = window.document.getElementById("canvas")
+        # pygbag hangs the canvas off the window; the element id is a
+        # template detail that has changed between versions.
+        canvas = getattr(window, "canvas", None) or window.document.getElementById("canvas")
         if canvas is None:
             return
         canvas.style.width = f"{viewport[0]}px"

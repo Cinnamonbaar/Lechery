@@ -14,7 +14,7 @@ from typing import Callable, Optional, Sequence
 import pygame
 
 from .metrics import px
-from .nativetext import NativeInput, available as native_available
+from .nativetext import NativeInput, ask_text, available as native_available
 from .text import TextStyle, wrap
 
 TEXT = (206, 200, 196)
@@ -286,6 +286,20 @@ class TextField(Widget):
                 font_size=style.font.get_height(),
             )
 
+    def _ask_with_dialog(self) -> None:
+        """Edit the value through the browser's prompt dialog."""
+        answer = ask_text(self.label or "Name", self.text)
+        if answer is None:
+            return
+        self.text = answer[: self.max_length]
+        if self.native is not None and self.native.element is not None:
+            try:
+                self.native.element.value = self.text
+            except Exception:
+                pass
+        if self.on_change is not None:
+            self.on_change(self.text)
+
     def sync(self) -> bool:
         """Adopt whatever the native input holds. Returns whether it moved.
 
@@ -311,9 +325,21 @@ class TextField(Widget):
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         super().handle_event(event)
+
         if self.native is not None:
-            # The element handles its own input, including the tap that
-            # focuses it; pygame never sees any of it.
+            # Normally the element receives the tap itself and pygame never
+            # sees it. A tap arriving *here* therefore means the element did
+            # not get it -- wrong stacking order, or a browser routing taps
+            # to the canvas regardless. Rather than leave the field dead,
+            # fall back to the browser's own dialog: whichever path actually
+            # receives the tap is the one that handles it.
+            if (
+                event.type == pygame.MOUSEBUTTONDOWN
+                and event.button == 1
+                and self.rect.collidepoint(event.pos)
+            ):
+                self._ask_with_dialog()
+                return True
             return False
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:

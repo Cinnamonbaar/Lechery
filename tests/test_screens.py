@@ -336,3 +336,91 @@ def test_the_stacked_band_shrinks_on_a_short_window():
     tall = App((420, 900)).push(CharacterCreation())._columns()[0]
     short = App((420, 560)).push(CharacterCreation())._columns()[0]
     assert short.height < tall.height
+
+
+# -- text entry -----------------------------------------------------------
+
+
+def test_a_text_field_without_a_browser_takes_typed_keys():
+    """The desktop path, unchanged by any of the web plumbing."""
+    from lechery.ui.text import TextStyle
+    from lechery.ui.fonts import load as load_font
+    from lechery.ui.widgets import TextField
+
+    field = TextField(
+        pygame.Rect(0, 0, 200, 32), "Name", TextStyle(load_font("body", 15))
+    )
+    assert field.native is None, "there is no browser here"
+
+    field.handle_event(click(field.rect.center))
+    assert field.focused
+    for letter in "Rell":
+        field.handle_event(pygame.event.Event(pygame.KEYDOWN, key=ord(letter), unicode=letter))
+    assert field.text == "Rell"
+
+
+def test_a_tap_reaching_the_canvas_falls_back_to_the_browser_dialog(monkeypatch):
+    """The self-healing bit.
+
+    A tap arriving in pygame means the overlaid input did not receive it --
+    wrong stacking, or a browser routing taps to the canvas anyway. Rather
+    than leave the field dead, whichever path gets the tap handles it.
+    """
+    from lechery.ui import widgets
+    from lechery.ui.fonts import load as load_font
+    from lechery.ui.text import TextStyle
+    from lechery.ui.widgets import TextField
+
+    field = TextField(
+        pygame.Rect(0, 0, 200, 32), "Name", TextStyle(load_font("body", 15))
+    )
+    # Pretend an element exists but is not catching taps.
+    field.native = type("Stub", (), {"element": None})()
+    monkeypatch.setattr(widgets, "ask_text", lambda prompt, initial: "Ilse")
+
+    assert field.handle_event(click(field.rect.center)) is True
+    assert field.text == "Ilse"
+
+
+def test_a_cancelled_dialog_leaves_the_name_alone(monkeypatch):
+    from lechery.ui import widgets
+    from lechery.ui.fonts import load as load_font
+    from lechery.ui.text import TextStyle
+    from lechery.ui.widgets import TextField
+
+    field = TextField(
+        pygame.Rect(0, 0, 200, 32), "Name", TextStyle(load_font("body", 15)), text="Rell"
+    )
+    field.native = type("Stub", (), {"element": None})()
+    monkeypatch.setattr(widgets, "ask_text", lambda prompt, initial: None)
+
+    field.handle_event(click(field.rect.center))
+    assert field.text == "Rell"
+
+
+def test_the_dialog_respects_the_field_length_limit(monkeypatch):
+    from lechery.ui import widgets
+    from lechery.ui.fonts import load as load_font
+    from lechery.ui.text import TextStyle
+    from lechery.ui.widgets import TextField
+
+    field = TextField(
+        pygame.Rect(0, 0, 200, 32), "Name", TextStyle(load_font("body", 15)), max_length=5
+    )
+    field.native = type("Stub", (), {"element": None})()
+    monkeypatch.setattr(widgets, "ask_text", lambda prompt, initial: "x" * 99)
+
+    field.handle_event(click(field.rect.center))
+    assert len(field.text) == 5
+
+
+def test_widgets_release_their_page_elements_when_a_screen_rebuilds(app):
+    """Leaked inputs stack invisibly over the canvas and eat taps."""
+    creation = app.push(CharacterCreation())
+    destroyed = []
+
+    for widget in creation.widgets:
+        widget.destroy = lambda w=widget: destroyed.append(w)
+
+    creation._build()
+    assert destroyed, "the old widgets should have been released"
