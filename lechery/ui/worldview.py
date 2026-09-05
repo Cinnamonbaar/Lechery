@@ -15,6 +15,7 @@ from ..session import Session
 from ..space.tiles import Tile
 from .camera import offset_for
 from .fonts import load as load_font
+from .metrics import px
 from .silhouette import build_silhouette, draw_actor
 from .text import TextStyle
 
@@ -28,10 +29,15 @@ FLOOR_LINE = (38, 34, 44)
 PORTAL = (188, 156, 96)
 MUTED = (124, 118, 128)
 
-#: Pixels per tile.
-SCALE = 34
+#: Design units per tile.
+TILE = 34
 
 MARGIN = 18
+
+
+def tile_px() -> int:
+    """Device pixels per tile, at the current display scale."""
+    return px(TILE)
 
 
 class WorldView:
@@ -41,7 +47,8 @@ class WorldView:
         #: camera re-frames the room instead of sliding it off-centre.
         self.rect = rect
 
-        self.silhouette = build_silhouette(int(SCALE * 0.95))
+        self._silhouette_scale = 0
+        self.silhouette = None
         self.muted_style = TextStyle(load_font("body", 15), MUTED)
 
     # -- input ------------------------------------------------------------
@@ -58,9 +65,9 @@ class WorldView:
         """Facing follows the cursor, independent of movement."""
         mx, my = pygame.mouse.get_pos()
         ox, oy = self.camera_offset()
-        px, py = self.session.player.position
-        dx = mx - (self.rect.x + px * SCALE + ox)
-        dy = my - (self.rect.y + py * SCALE + oy)
+        world_x, world_y = self.session.player.position
+        dx = mx - (self.rect.x + world_x * tile_px() + ox)
+        dy = my - (self.rect.y + world_y * tile_px() + oy)
         if (dx, dy) != (0, 0):
             self.session.player.facing = math.atan2(dy, dx)
 
@@ -72,7 +79,7 @@ class WorldView:
             self.session.room_map.size,
             self.session.player.position,
             self.rect.size,
-            SCALE,
+            tile_px(),
         )
 
     # -- drawing ----------------------------------------------------------
@@ -97,11 +104,11 @@ class WorldView:
     def _visible_tile_range(self, offset: tuple[float, float]) -> tuple[range, range]:
         """Only the tiles on screen, so map size costs nothing to draw."""
         ox, oy = offset
-        first_x = int(-ox // SCALE)
-        first_y = int(-oy // SCALE)
+        first_x = int(-ox // tile_px())
+        first_y = int(-oy // tile_px())
         return (
-            range(first_x, first_x + self.rect.width // SCALE + 2),
-            range(first_y, first_y + self.rect.height // SCALE + 2),
+            range(first_x, first_x + self.rect.width // tile_px() + 2),
+            range(first_y, first_y + self.rect.height // tile_px() + 2),
         )
 
     def _draw_tiles(self, surface: pygame.Surface, offset: tuple[float, float]) -> None:
@@ -113,17 +120,28 @@ class WorldView:
                 tile = tilemap.get(tx, ty)
                 if tile is Tile.VOID:
                     continue
-                rect = pygame.Rect(tx * SCALE + ox, ty * SCALE + oy, SCALE, SCALE)
+                rect = pygame.Rect(tx * tile_px() + ox, ty * tile_px() + oy, tile_px(), tile_px())
                 pygame.draw.rect(surface, TILE_COLORS[tile], rect)
                 if tile is not Tile.WALL:
-                    pygame.draw.rect(surface, FLOOR_LINE, rect, width=1)
+                    pygame.draw.rect(surface, FLOOR_LINE, rect, width=px(1))
 
     def _draw_portals(self, surface: pygame.Surface, offset: tuple[float, float]) -> None:
         ox, oy = offset
         room_portals = self.session.level.portals.get(self.session.player.room_id, {})
         for (tx, ty), _portal in room_portals.items():
-            rect = pygame.Rect(tx * SCALE + ox, ty * SCALE + oy, SCALE, SCALE)
-            pygame.draw.rect(surface, PORTAL, rect.inflate(-6, -6), width=2, border_radius=3)
+            rect = pygame.Rect(tx * tile_px() + ox, ty * tile_px() + oy, tile_px(), tile_px())
+            pygame.draw.rect(surface, PORTAL, rect.inflate(-px(6), -px(6)), width=px(2), border_radius=px(3))
+
+    def _player_silhouette(self) -> pygame.Surface:
+        """The body sprite, rebuilt only when the display scale changes.
+
+        Rotating it every frame is cheap; redrawing it every frame is not.
+        """
+        size = int(tile_px() * 0.95)
+        if self.silhouette is None or size != self._silhouette_scale:
+            self.silhouette = build_silhouette(size)
+            self._silhouette_scale = size
+        return self.silhouette
 
     def _draw_player(self, surface: pygame.Surface) -> None:
         """The player is only screen-centred when the camera is following.
@@ -132,13 +150,13 @@ class WorldView:
         their actual place in it.
         """
         ox, oy = self.camera_offset()
-        px, py = self.session.player.position
+        world_x, world_y = self.session.player.position
         draw_actor(
             surface,
-            self.silhouette,
-            (px * SCALE + ox, py * SCALE + oy),
+            self._player_silhouette(),
+            (world_x * tile_px() + ox, world_y * tile_px() + oy),
             self.session.player.facing,
-            SCALE,
+            tile_px(),
         )
 
     def _draw_hint(self, surface: pygame.Surface) -> None:
@@ -147,4 +165,6 @@ class WorldView:
         )
         hint = portal.label if portal else "WASD move  ·  mouse look  ·  [ ] toggle bars"
         text = self.muted_style.font.render(hint, True, MUTED)
-        surface.blit(text, (MARGIN, surface.get_height() - MARGIN - text.get_height()))
+        surface.blit(
+            text, (px(MARGIN), surface.get_height() - px(MARGIN) - text.get_height())
+        )

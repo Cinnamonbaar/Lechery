@@ -13,6 +13,8 @@ from typing import Optional
 
 import pygame
 
+from .metrics import px
+
 BASE = (210, 205, 215, 46)
 BASE_EDGE = (220, 214, 226, 78)
 KNOB = (222, 216, 228, 130)
@@ -77,10 +79,11 @@ class Thumbstick:
         dx = self.current[0] - self.origin[0]
         dy = self.current[1] - self.origin[1]
         distance = math.hypot(dx, dy)
-        if distance < 6:  # a dead zone, so a tap is not a twitch of movement
+        if distance < px(6):  # a dead zone, so a tap is not a twitch
             return (0.0, 0.0)
-        scale = min(distance, RADIUS) / distance
-        return (dx * scale / RADIUS, dy * scale / RADIUS)
+        radius = px(RADIUS)
+        scale = min(distance, radius) / distance
+        return (dx * scale / radius, dy * scale / radius)
 
     # -- drawing ----------------------------------------------------------
 
@@ -88,12 +91,12 @@ class Thumbstick:
         if self.origin is None or self.current is None:
             return
         overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        pygame.draw.circle(overlay, BASE, self.origin, RADIUS)
-        pygame.draw.circle(overlay, BASE_EDGE, self.origin, RADIUS, width=2)
+        pygame.draw.circle(overlay, BASE, self.origin, px(RADIUS))
+        pygame.draw.circle(overlay, BASE_EDGE, self.origin, px(RADIUS), width=px(2))
 
         dx, dy = self.direction()
-        knob = (self.origin[0] + dx * RADIUS, self.origin[1] + dy * RADIUS)
-        pygame.draw.circle(overlay, KNOB, knob, RADIUS * 0.38)
+        knob = (self.origin[0] + dx * px(RADIUS), self.origin[1] + dy * px(RADIUS))
+        pygame.draw.circle(overlay, KNOB, knob, px(RADIUS) * 0.38)
         surface.blit(overlay, (0, 0))
 
 

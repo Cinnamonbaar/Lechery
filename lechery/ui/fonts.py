@@ -18,6 +18,7 @@ from typing import Optional
 import pygame
 
 from ..platform import is_web
+from .metrics import px
 
 #: Drop .ttf files here and name them below to use real typography. The
 #: game runs without them; it just looks more generic.
@@ -50,6 +51,7 @@ def load(role: str, size: int, bold: bool = False) -> pygame.font.Font:
     if cached is not None:
         return cached
 
+    size = px(size)  # design units in, device pixels out
     for source in _sources(role, size, bold):
         font = source()
         if font is not None:

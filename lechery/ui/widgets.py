@@ -13,6 +13,8 @@ from typing import Callable, Optional, Sequence
 
 import pygame
 
+from .metrics import px
+from .nativetext import NativeInput, available as native_available
 from .text import TextStyle, wrap
 
 TEXT = (206, 200, 196)
@@ -35,6 +37,13 @@ class Widget:
         self.style = style
         self.hovered = False
         self.enabled = True
+
+    def destroy(self) -> None:
+        """Release anything outside pygame's world. Overridden where needed.
+
+        Screens rebuild their widgets freely, so anything a widget puts in
+        the page has to come back out with it.
+        """
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.MOUSEMOTION:
@@ -78,13 +87,13 @@ class Button(Widget):
 
     def draw(self, surface: pygame.Surface) -> None:
         background = FIELD_HOVER if (self.hovered and self.enabled) else FIELD_BG
-        pygame.draw.rect(surface, background, self.rect, border_radius=4)
+        pygame.draw.rect(surface, background, self.rect, border_radius=px(4))
         pygame.draw.rect(
             surface,
             ACCENT if (self.primary and self.enabled) else FIELD_EDGE,
             self.rect,
-            width=1,
-            border_radius=4,
+            width=px(1),
+            border_radius=px(4),
         )
         colour = TEXT if self.enabled else DISABLED
         if self.primary and self.enabled:
@@ -134,12 +143,12 @@ class Cycler(Widget):
 
     @property
     def left_rect(self) -> pygame.Rect:
-        return pygame.Rect(self.rect.x, self.rect.y, ARROW_WIDTH, self.rect.height)
+        return pygame.Rect(self.rect.x, self.rect.y, px(ARROW_WIDTH), self.rect.height)
 
     @property
     def right_rect(self) -> pygame.Rect:
         return pygame.Rect(
-            self.rect.right - ARROW_WIDTH, self.rect.y, ARROW_WIDTH, self.rect.height
+            self.rect.right - px(ARROW_WIDTH), self.rect.y, px(ARROW_WIDTH), self.rect.height
         )
 
     def handle_event(self, event: pygame.event.Event) -> bool:
@@ -157,10 +166,10 @@ class Cycler(Widget):
 
     def draw(self, surface: pygame.Surface) -> None:
         font = self.style.font
-        surface.blit(font.render(self.label, True, MUTED), (self.rect.x, self.rect.y - 18))
+        surface.blit(font.render(self.label, True, MUTED), (self.rect.x, self.rect.y - px(18)))
 
-        pygame.draw.rect(surface, FIELD_BG, self.rect, border_radius=4)
-        pygame.draw.rect(surface, FIELD_EDGE, self.rect, width=1, border_radius=4)
+        pygame.draw.rect(surface, FIELD_BG, self.rect, border_radius=px(4))
+        pygame.draw.rect(surface, FIELD_EDGE, self.rect, width=px(1), border_radius=px(4))
 
         for rect, glyph in ((self.left_rect, "‹"), (self.right_rect, "›")):
             hovered = rect.collidepoint(pygame.mouse.get_pos())
@@ -229,17 +238,17 @@ class Slider(Widget):
 
     def draw(self, surface: pygame.Surface) -> None:
         font = self.style.font
-        surface.blit(font.render(self.label, True, MUTED), (self.rect.x, self.rect.y - 18))
+        surface.blit(font.render(self.label, True, MUTED), (self.rect.x, self.rect.y - px(18)))
         value = font.render(self.format(self.value), True, TEXT)
-        surface.blit(value, (self.rect.right - value.get_width(), self.rect.y - 18))
+        surface.blit(value, (self.rect.right - value.get_width(), self.rect.y - px(18)))
 
-        track = pygame.Rect(self.rect.x, self.rect.centery - 2, self.rect.width, 4)
-        pygame.draw.rect(surface, FIELD_BG, track, border_radius=2)
+        track = pygame.Rect(self.rect.x, self.rect.centery - px(2), self.rect.width, px(4))
+        pygame.draw.rect(surface, FIELD_BG, track, border_radius=px(2))
         filled = pygame.Rect(track.x, track.y, int(track.width * self.fraction), track.height)
-        pygame.draw.rect(surface, FIELD_EDGE, filled, border_radius=2)
+        pygame.draw.rect(surface, FIELD_EDGE, filled, border_radius=px(2))
 
         knob_x = self.rect.x + int(self.rect.width * self.fraction)
-        pygame.draw.circle(surface, ACCENT, (knob_x, self.rect.centery), 7)
+        pygame.draw.circle(surface, ACCENT, (knob_x, self.rect.centery), px(7))
 
 
 class TextField(Widget):
@@ -264,8 +273,49 @@ class TextField(Widget):
         self.on_change = on_change
         self.focused = False
 
+        # In a browser the text is edited in a real input element laid over
+        # this rect; there is no way to raise a phone keyboard otherwise.
+        self.native: Optional[NativeInput] = None
+        if native_available():
+            self.native = NativeInput(
+                rect,
+                text=text,
+                max_length=max_length,
+                placeholder=placeholder,
+                colour="#cec8c4",
+                font_size=style.font.get_height(),
+            )
+
+    def sync(self) -> bool:
+        """Adopt whatever the native input holds. Returns whether it moved.
+
+        Polled rather than driven by events: the element belongs to the
+        page, and its edits never reach pygame's queue at all.
+        """
+        if self.native is None:
+            return False
+        self.native.move(self.rect)
+        value = self.native.value
+        self.focused = self.native.focused
+        if value == self.text:
+            return False
+        self.text = value
+        if self.on_change is not None:
+            self.on_change(self.text)
+        return True
+
+    def destroy(self) -> None:
+        if self.native is not None:
+            self.native.destroy()
+            self.native = None
+
     def handle_event(self, event: pygame.event.Event) -> bool:
         super().handle_event(event)
+        if self.native is not None:
+            # The element handles its own input, including the tap that
+            # focuses it; pygame never sees any of it.
+            return False
+
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             # Clicking elsewhere unfocuses, so typing cannot land in a field
             # the player has visibly moved away from.
@@ -291,23 +341,30 @@ class TextField(Widget):
         return True
 
     def draw(self, surface: pygame.Surface) -> None:
+        self.sync()
         font = self.style.font
-        surface.blit(font.render(self.label, True, MUTED), (self.rect.x, self.rect.y - 18))
+        surface.blit(font.render(self.label, True, MUTED), (self.rect.x, self.rect.y - px(18)))
 
-        pygame.draw.rect(surface, FIELD_BG, self.rect, border_radius=4)
+        pygame.draw.rect(surface, FIELD_BG, self.rect, border_radius=px(4))
         pygame.draw.rect(
-            surface, ACCENT if self.focused else FIELD_EDGE, self.rect, width=1, border_radius=4
+            surface, ACCENT if self.focused else FIELD_EDGE, self.rect, width=px(1),
+            border_radius=px(4)
         )
+
+        if self.native is not None:
+            # A native input is drawing the text itself; drawing ours too
+            # would double it, offset by a pixel or two.
+            return
 
         shown = self.text or self.placeholder
         colour = TEXT if self.text else MUTED
         text = font.render(shown, True, colour)
-        surface.blit(text, (self.rect.x + 10, self.rect.centery - text.get_height() // 2))
+        surface.blit(text, (self.rect.x + px(10), self.rect.centery - text.get_height() // 2))
 
         if self.focused and (pygame.time.get_ticks() // 500) % 2 == 0:
-            x = self.rect.x + 12 + font.size(self.text)[0]
+            x = self.rect.x + px(12) + font.size(self.text)[0]
             pygame.draw.line(
-                surface, ACCENT, (x, self.rect.y + 8), (x, self.rect.bottom - 8), 1
+                surface, ACCENT, (x, self.rect.y + px(8)), (x, self.rect.bottom - px(8)), px(1)
             )
 
 

@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 import pygame
 
+from .metrics import px
 from .profile import FormFactor
 
 #: Width of a bar when open, on a wide screen.
@@ -66,12 +67,12 @@ class WideLayout(Layout):
     form = FormFactor.WIDE
 
     def _bar_widths(self) -> tuple[int, int]:
-        left = BAR_WIDTH if self.left_open else TAB_WIDTH
-        right = BAR_WIDTH if self.right_open else TAB_WIDTH
+        left = px(BAR_WIDTH) if self.left_open else px(TAB_WIDTH)
+        right = px(BAR_WIDTH) if self.right_open else px(TAB_WIDTH)
 
         # A narrow window shrinks the bars rather than the play area; both
         # give way together so the centre stays centred.
-        overflow = (left + right + MIN_CENTER) - self.window[0]
+        overflow = (left + right + px(MIN_CENTER)) - self.window[0]
         if overflow > 0:
             if self.left_open and self.right_open:
                 left -= overflow // 2
@@ -80,8 +81,8 @@ class WideLayout(Layout):
                 left -= overflow
             elif self.right_open:
                 right -= overflow
-            left = max(left, TAB_WIDTH)
-            right = max(right, TAB_WIDTH)
+            left = max(left, px(TAB_WIDTH))
+            right = max(right, px(TAB_WIDTH))
         return left, right
 
     @property
@@ -132,7 +133,7 @@ class CompactLayout(Layout):
             self.left_open = False
 
     def _drawer_width(self) -> int:
-        return int(min(self.window[0] * COMPACT_DRAWER_FRACTION, BAR_WIDTH * 1.6))
+        return int(min(self.window[0] * COMPACT_DRAWER_FRACTION, px(BAR_WIDTH * 1.6)))
 
     @property
     def left(self) -> pygame.Rect:
@@ -154,15 +155,15 @@ class CompactLayout(Layout):
 
     @property
     def left_handle(self) -> pygame.Rect:
-        return pygame.Rect(HANDLE_MARGIN, HANDLE_MARGIN, HANDLE_SIZE, HANDLE_SIZE)
+        return pygame.Rect(px(HANDLE_MARGIN), px(HANDLE_MARGIN), px(HANDLE_SIZE), px(HANDLE_SIZE))
 
     @property
     def right_handle(self) -> pygame.Rect:
         return pygame.Rect(
-            self.window[0] - HANDLE_SIZE - HANDLE_MARGIN,
-            HANDLE_MARGIN,
-            HANDLE_SIZE,
-            HANDLE_SIZE,
+            self.window[0] - px(HANDLE_SIZE) - px(HANDLE_MARGIN),
+            px(HANDLE_MARGIN),
+            px(HANDLE_SIZE),
+            px(HANDLE_SIZE),
         )
 
 

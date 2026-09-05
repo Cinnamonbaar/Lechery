@@ -11,6 +11,7 @@ import pygame
 
 from ..log import Entry, Kind, MessageLog
 from .fonts import load as load_font
+from .metrics import px
 from .panel import PAD, Panel
 from .text import TextStyle, wrap
 
@@ -112,11 +113,11 @@ class LogPanel(Panel):
     def _draw_scrollbar(
         self, surface: pygame.Surface, rect: pygame.Rect, first: int, visible: int, total: int
     ) -> None:
-        x = rect.right + PAD // 2 - 3
-        track = pygame.Rect(x, rect.y, 3, rect.height)
+        x = rect.right + px(PAD) // 2 - px(3)
+        track = pygame.Rect(x, rect.y, px(3), rect.height)
         pygame.draw.rect(surface, SCROLLBAR_TRACK, track)
 
-        height = max(20, int(rect.height * visible / total))
+        height = max(px(20), int(rect.height * visible / total))
         span = rect.height - height
         offset = 0 if total == visible else int(span * first / (total - visible))
-        pygame.draw.rect(surface, SCROLLBAR, pygame.Rect(x, rect.y + offset, 3, height))
+        pygame.draw.rect(surface, SCROLLBAR, pygame.Rect(x, rect.y + offset, px(3), height))

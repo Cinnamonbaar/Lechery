@@ -7,6 +7,7 @@ import pygame
 from ..entities.actor import Player
 from ..traits import TRAITS
 from .paperdoll import LABEL, Paperdoll
+from .metrics import px
 from .panel import Panel
 from .text import TextStyle
 
@@ -41,7 +42,7 @@ class PaperdollPanel(Panel):
 
     def draw_body(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         rows = len(SHOWN) + 3
-        text_height = rows * (self.body_style.line_height + ROW_GAP)
+        text_height = rows * (self.body_style.line_height + px(ROW_GAP))
 
         height = min(rect.height - text_height, int(rect.width / ASPECT))
         width = int(height * ASPECT)
@@ -52,7 +53,7 @@ class PaperdollPanel(Panel):
         figure = self.doll.surface()
         surface.blit(figure, figure.get_rect(midtop=(rect.centerx, rect.y)))
 
-        self._draw_traits(surface, rect, rect.y + height + 12)
+        self._draw_traits(surface, rect, rect.y + height + px(12))
 
     def _draw_traits(self, surface: pygame.Surface, rect: pygame.Rect, y: int) -> None:
         font = self.body_style.font
@@ -60,11 +61,11 @@ class PaperdollPanel(Panel):
 
         name = font.render(character.name, True, NAME)
         surface.blit(name, (rect.x, y))
-        y += self.body_style.line_height + ROW_GAP
+        y += self.body_style.line_height + px(ROW_GAP)
 
         gender = font.render(f"{character.gender}  ·  {character.pronouns}", True, KEY)
         surface.blit(gender, (rect.x, y))
-        y += self.body_style.line_height + ROW_GAP
+        y += self.body_style.line_height + px(ROW_GAP)
 
         # What strangers see, which is allowed to disagree with the line
         # above it -- and when it does, that is worth showing plainly.
@@ -76,7 +77,7 @@ class PaperdollPanel(Panel):
         surface.blit(
             font.render(text, True, READ if matches else READ_MISMATCH), (rect.x, y)
         )
-        y += self.body_style.line_height + ROW_GAP + 4
+        y += self.body_style.line_height + px(ROW_GAP) + px(4)
 
         for key in SHOWN:
             if key not in character.traits:
@@ -87,4 +88,4 @@ class PaperdollPanel(Panel):
             value = font.render(character.traits.describe(key), True, VALUE)
             surface.blit(label, (rect.x, y))
             surface.blit(value, (rect.right - value.get_width(), y))
-            y += self.body_style.line_height + ROW_GAP
+            y += self.body_style.line_height + px(ROW_GAP)

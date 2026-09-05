@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pygame
 
+from .metrics import px
 from .text import TextStyle
 
 PANEL_BG = (21, 19, 25)
@@ -42,17 +43,17 @@ class Panel:
         pygame.draw.rect(surface, PANEL_EDGE, rect, width=1)
 
         label = self.style.font.render(self.title.upper(), True, TITLE)
-        surface.blit(label, (rect.x + PAD, rect.y + 10))
-        line_y = rect.y + TITLE_HEIGHT
+        surface.blit(label, (rect.x + px(PAD), rect.y + px(10)))
+        line_y = rect.y + px(TITLE_HEIGHT)
         pygame.draw.line(
-            surface, PANEL_EDGE, (rect.x + PAD, line_y), (rect.right - PAD, line_y)
+            surface, PANEL_EDGE, (rect.x + px(PAD), line_y), (rect.right - px(PAD), line_y)
         )
 
         body = rect.copy()
-        body.y = line_y + PAD
-        body.height = rect.height - (line_y - rect.y) - PAD * 2
-        body.x += PAD
-        body.width -= PAD * 2
+        body.y = line_y + px(PAD)
+        body.height = rect.height - (line_y - rect.y) - px(PAD) * 2
+        body.x += px(PAD)
+        body.width -= px(PAD) * 2
         if body.width > 0 and body.height > 0:
             self.draw_body(surface, body)
 

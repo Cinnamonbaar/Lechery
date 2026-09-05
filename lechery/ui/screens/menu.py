@@ -12,6 +12,7 @@ import pygame
 
 from ...settings import LayoutMode
 from ..fonts import load as load_font
+from ..metrics import px
 from ..text import TextStyle
 from ..widgets import ACCENT, MUTED, Button, Paragraph
 from .base import Screen
@@ -49,13 +50,13 @@ class MainMenu(Screen):
         if self.app is None:
             return
         width, height = self.app.window
-        x = width // 2 - BUTTON_WIDTH // 2
+        x = width // 2 - px(BUTTON_WIDTH) // 2
         y = int(height * 0.44)
 
         def row() -> pygame.Rect:
             nonlocal y
-            rect = pygame.Rect(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
-            y += BUTTON_HEIGHT + BUTTON_GAP
+            rect = pygame.Rect(x, y, px(BUTTON_WIDTH), px(BUTTON_HEIGHT))
+            y += px(BUTTON_HEIGHT) + px(BUTTON_GAP)
             return rect
 
         new_game = Button(row(), "New Game", self.body, self._new_game, primary=True)
@@ -104,13 +105,13 @@ class MainMenu(Screen):
         title = self.title_font.render("Lechery", True, TITLE)
         surface.blit(title, title.get_rect(midtop=(width // 2, int(height * 0.20))))
 
-        rule_y = int(height * 0.20) + title.get_height() + 14
+        rule_y = int(height * 0.20) + title.get_height() + px(14)
         pygame.draw.line(
-            surface, RULE, (width // 2 - 120, rule_y), (width // 2 + 120, rule_y)
+            surface, RULE, (width // 2 - px(120), rule_y), (width // 2 + px(120), rule_y)
         )
 
         self.tagline.draw(
-            surface, pygame.Rect(width // 2 - 200, rule_y + 16, 400, 40)
+            surface, pygame.Rect(width // 2 - px(200), rule_y + px(16), px(400), px(40))
         )
 
         for button in self.buttons:

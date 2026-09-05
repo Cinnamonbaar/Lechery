@@ -38,6 +38,7 @@ try:
     from lechery.platform import is_web
     from lechery.settings import Settings
     from lechery.ui.app import App
+    from lechery.ui.metrics import set_scale
 except Exception:  # pragma: no cover - exercised only when an import breaks
     IMPORT_ERROR = traceback.format_exc()
 
@@ -69,6 +70,54 @@ def parse_seed(argv: list[str]) -> int | None:
         if argument.lstrip("-").isdigit():
             return int(argument.lstrip("-"))
     return None
+
+
+def browser_window():
+    """pygbag's handle on the browser window, or None."""
+    try:
+        import platform as runtime  # pygbag replaces this with its own
+
+        return getattr(runtime, "window", None)
+    except Exception:
+        return None
+
+
+def device_pixel_ratio() -> float:
+    """How many real pixels the screen puts in one CSS pixel.
+
+    Three on most phones. Rendering at CSS pixels and letting the browser
+    upscale is what makes a canvas game look soft next to the page around
+    it, so this is the number the whole scale system hangs off.
+    """
+    window = browser_window()
+    if window is None:
+        return 1.0
+    try:
+        ratio = float(window.devicePixelRatio)
+        return ratio if ratio > 0 else 1.0
+    except Exception:
+        return 1.0
+
+
+def match_canvas_to_page(size: tuple[int, int], viewport: tuple[int, int]) -> None:
+    """Keep the canvas element the viewport's size on the page.
+
+    The drawing surface is created at device resolution, which would
+    otherwise make the element itself that many pixels wide and overflow
+    the page. Setting the CSS size back to the viewport is what turns those
+    extra pixels into sharpness instead of a scrollbar.
+    """
+    window = browser_window()
+    if window is None:
+        return
+    try:
+        canvas = window.document.getElementById("canvas")
+        if canvas is None:
+            return
+        canvas.style.width = f"{viewport[0]}px"
+        canvas.style.height = f"{viewport[1]}px"
+    except Exception:
+        pass
 
 
 def browser_viewport() -> tuple[int, int] | None:
@@ -194,8 +243,15 @@ async def run(seed: int | None = None) -> int:
         # the page, and asking for a mode it cannot give fails before
         # anything is drawn.
         flags = 0 if is_web() else pygame.RESIZABLE
-        size = browser_viewport() or SIZE
+        viewport = browser_viewport() or SIZE
+        scale = set_scale(device_pixel_ratio())
+
+        # Draw at device resolution, then tell the page the element is still
+        # viewport-sized. Every design size is multiplied by the same scale,
+        # so the interface stays the same physical size and gains pixels.
+        size = (round(viewport[0] * scale), round(viewport[1] * scale))
         screen = pygame.display.set_mode(size, flags)
+        match_canvas_to_page(size, viewport)
 
         # The canvas may not be the size requested, so measure what arrived.
         # Laying out against a size we did not get puts the interface
@@ -219,10 +275,13 @@ async def run(seed: int | None = None) -> int:
             # viewport is polled. This is what catches a phone rotating.
             frame += 1
             if frame % VIEWPORT_POLL == 0:
-                viewport = browser_viewport()
-                if viewport is not None and viewport != size:
-                    size = viewport
+                current = browser_viewport()
+                if current is not None and current != viewport:
+                    viewport = current
+                    scale = set_scale(device_pixel_ratio())
+                    size = (round(viewport[0] * scale), round(viewport[1] * scale))
                     screen = pygame.display.set_mode(size, flags)
+                    match_canvas_to_page(size, viewport)
                     app.resize(screen.get_size())
 
             # Hand the frame back to the browser, every pass.

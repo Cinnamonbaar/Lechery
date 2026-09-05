@@ -21,3 +21,18 @@ def display():
     pygame.display.set_mode((1280, 760))
     yield
     pygame.quit()
+
+
+@pytest.fixture(autouse=True)
+def unscaled_display():
+    """Every test starts at scale 1, whatever the last one did.
+
+    The scale is module-level state, and a test that leaves it at 3x makes
+    unrelated tests measure a screen three times the size they expect.
+    """
+    from lechery.ui import fonts, metrics
+
+    yield
+    if metrics.SCALE != 1.0:
+        metrics.set_scale(1.0)
+        fonts.clear_cache()

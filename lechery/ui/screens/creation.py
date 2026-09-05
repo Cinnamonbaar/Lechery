@@ -26,6 +26,7 @@ from ...traits.identity import Gender
 from ...traits.scale import BUST, HEIGHT, PHALLUS
 from ...traits.traits import Traits
 from ..fonts import load as load_font
+from ..metrics import design, px
 from ..paperdoll import Paperdoll
 from ..text import TextStyle
 from ..widgets import (
@@ -110,6 +111,11 @@ class CharacterCreation(Screen):
         self._apply_backstory()
         self._build()
 
+    def leave(self) -> None:
+        for widget in self.widgets:
+            widget.destroy()
+        self.widgets = []
+
     def resize(self, window: tuple[int, int]) -> None:
         self._build()
 
@@ -121,8 +127,12 @@ class CharacterCreation(Screen):
 
     @property
     def stacked(self) -> bool:
-        """Whether the doll sits above the controls rather than beside them."""
-        return self.app.window[0] < STACK_BELOW
+        """Whether the doll sits above the controls rather than beside them.
+
+        Compared in design units. Against raw pixels a phone measures wider
+        than a laptop, and lays itself out accordingly.
+        """
+        return design(self.app.window[0]) < STACK_BELOW
 
     def _columns(self) -> tuple[pygame.Rect, pygame.Rect]:
         """The doll's area and the controls' area.
@@ -132,19 +142,21 @@ class CharacterCreation(Screen):
         mean anything, and a creation screen without it is a form.
         """
         width, height = self.app.window
-        body = pygame.Rect(MARGIN, 120, width - MARGIN * 2, height - 120 - FOOTER)
+        body = pygame.Rect(
+            px(MARGIN), px(120), width - px(MARGIN) * 2, height - px(120) - px(FOOTER)
+        )
 
         if self.stacked:
-            band = min(STACK_BAND, int(body.height * STACK_BAND_FRACTION))
+            band = min(px(STACK_BAND), int(body.height * STACK_BAND_FRACTION))
             doll = pygame.Rect(body.x, body.y, body.width, band)
             controls = pygame.Rect(
-                body.x, doll.bottom + 12, body.width, body.height - band - 12
+                body.x, doll.bottom + px(12), body.width, body.height - band - px(12)
             )
             return doll, controls
 
-        doll = pygame.Rect(body.x, body.y, DOLL_WIDTH, body.height)
+        doll = pygame.Rect(body.x, body.y, px(DOLL_WIDTH), body.height)
         controls = pygame.Rect(
-            doll.right + MARGIN, body.y, body.width - DOLL_WIDTH - MARGIN, body.height
+            doll.right + px(MARGIN), body.y, body.width - px(DOLL_WIDTH) - px(MARGIN), body.height
         )
         return doll, controls
 
@@ -152,6 +164,10 @@ class CharacterCreation(Screen):
         if self.app is None:
             return
         _, controls = self._columns()
+        # Widgets can own page elements; rebuilding without releasing them
+        # leaves invisible inputs stacked over the canvas eating taps.
+        for widget in self.widgets:
+            widget.destroy()
         self.widgets = []
 
         builder = {
@@ -165,7 +181,7 @@ class CharacterCreation(Screen):
 
     def _rows(self, rect: pygame.Rect, count: int) -> list[pygame.Rect]:
         return [
-            pygame.Rect(rect.x, rect.y + 24 + index * ROW_GAP, rect.width, 32)
+            pygame.Rect(rect.x, rect.y + px(24) + index * px(ROW_GAP), rect.width, px(32))
             for index in range(count)
         ]
 
@@ -249,7 +265,7 @@ class CharacterCreation(Screen):
         ]
 
     def _build_origin(self, rect: pygame.Rect) -> None:
-        row = pygame.Rect(rect.x, rect.y + 24, rect.width, 32)
+        row = pygame.Rect(rect.x, rect.y + px(24), rect.width, px(32))
         self.widgets = [
             Cycler(
                 row,
@@ -318,16 +334,16 @@ class CharacterCreation(Screen):
 
     def _build_footer(self) -> None:
         width, height = self.app.window
-        y = height - FOOTER + 16
+        y = height - px(FOOTER) + px(16)
         back = Button(
-            pygame.Rect(MARGIN, y, 130, 42),
+            pygame.Rect(px(MARGIN), y, px(130), px(42)),
             "Back" if self.step else "Menu",
             self.body,
             self._back,
         )
         label = "Begin" if self.step == len(STEPS) - 1 else "Next"
         forward = Button(
-            pygame.Rect(width - MARGIN - 160, y, 160, 42),
+            pygame.Rect(width - px(MARGIN) - px(160), y, px(160), px(42)),
             label,
             self.body,
             self._forward,
@@ -374,6 +390,12 @@ class CharacterCreation(Screen):
             self._back()
             return True
 
+        # Native inputs are edited in the page, so their value is polled
+        # rather than arriving as events.
+        for widget in self.widgets:
+            if hasattr(widget, "sync"):
+                widget.sync()
+
         consumed = False
         for widget in self.widgets:
             if widget.handle_event(event):
@@ -394,12 +416,16 @@ class CharacterCreation(Screen):
         step = STEPS[self.step]
 
         heading = self.heading_font.render(step.title, True, HEADING)
-        surface.blit(heading, (MARGIN, 44))
+        surface.blit(heading, (px(MARGIN), px(44)))
 
         self.blurb.set_text(step.blurb)
-        self.blurb.draw(surface, pygame.Rect(MARGIN, 84, width - MARGIN * 2, 24))
+        self.blurb.draw(
+            surface, pygame.Rect(px(MARGIN), px(84), width - px(MARGIN) * 2, px(24))
+        )
 
-        pygame.draw.line(surface, RULE, (MARGIN, 112), (width - MARGIN, 112))
+        pygame.draw.line(
+            surface, RULE, (px(MARGIN), px(112)), (width - px(MARGIN), px(112))
+        )
         self._draw_progress(surface, width)
 
         doll_rect, controls = self._columns()
@@ -418,10 +444,10 @@ class CharacterCreation(Screen):
             button.draw(surface)
 
     def _draw_progress(self, surface: pygame.Surface, width: int) -> None:
-        x = width - MARGIN - len(STEPS) * 22
+        x = width - px(MARGIN) - len(STEPS) * px(22)
         for index in range(len(STEPS)):
             colour = ACCENT if index <= self.step else RULE
-            pygame.draw.circle(surface, colour, (x + index * 22, 58), 4)
+            pygame.draw.circle(surface, colour, (x + index * px(22), px(58)), px(4))
 
     def _identity_lines(self) -> list[tuple[str, tuple[int, int, int]]]:
         character = self.character
@@ -438,17 +464,17 @@ class CharacterCreation(Screen):
             self._draw_doll_column(surface, rect)
 
     def _draw_doll_column(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
-        height = min(rect.height - 90, int(rect.width * 1.5))
+        height = min(rect.height - px(90), int(rect.width * 1.5))
         width = int(height * 0.62)
         self.doll.resize((width, height))
         figure = self.doll.surface()
         surface.blit(figure, figure.get_rect(midtop=(rect.centerx, rect.y)))
 
-        y = rect.y + height + 14
+        y = rect.y + height + px(14)
         for line, colour in self._identity_lines():
             text = self.small.font.render(line, True, colour)
             surface.blit(text, text.get_rect(midtop=(rect.centerx, y)))
-            y += self.small.line_height + 2
+            y += self.small.line_height + px(2)
 
     def _draw_doll_banded(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         """Stacked: the figure at the left of the band, its lines beside it.
@@ -464,28 +490,28 @@ class CharacterCreation(Screen):
         surface.blit(figure, figure.get_rect(topleft=(rect.x, rect.y)))
 
         lines = self._identity_lines()
-        block = len(lines) * (self.small.line_height + 2)
-        x = rect.x + width + 18
+        block = len(lines) * (self.small.line_height + px(2))
+        x = rect.x + width + px(18)
         y = rect.centery - block // 2
         for line, colour in lines:
             surface.blit(self.small.font.render(line, True, colour), (x, y))
-            y += self.small.line_height + 2
+            y += self.small.line_height + px(2)
 
     def _draw_backstory(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         backstory = self.backstory
-        y = rect.y + 84
+        y = rect.y + px(84)
 
         tagline = self.small.font.render(backstory.tagline, True, ACCENT)
         surface.blit(tagline, (rect.x, y))
-        y += self.small.line_height + 10
+        y += self.small.line_height + px(10)
 
         self.detail.set_text(backstory.description)
-        y = self.detail.draw(surface, pygame.Rect(rect.x, y, rect.width, 100)) + 16
+        y = self.detail.draw(surface, pygame.Rect(rect.x, y, rect.width, px(100))) + px(16)
 
-        self._draw_sheet(surface, pygame.Rect(rect.x, y, rect.width, 200))
+        self._draw_sheet(surface, pygame.Rect(rect.x, y, rect.width, px(200)))
 
     def _draw_summary(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
-        y = rect.y + 24
+        y = rect.y + px(24)
         character = self.character
         lines = [
             (self.name.strip() or "Wanderer", TEXT),
@@ -500,9 +526,9 @@ class CharacterCreation(Screen):
         ]
         for line, colour in lines:
             surface.blit(self.small.font.render(line, True, colour), (rect.x, y))
-            y += self.small.line_height + 4
+            y += self.small.line_height + px(4)
 
-        self._draw_sheet(surface, pygame.Rect(rect.x, y + 12, rect.width, 220))
+        self._draw_sheet(surface, pygame.Rect(rect.x, y + px(12), rect.width, px(220)))
 
     def _draw_sheet(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         """Stats and skills, so the choice's consequences are visible."""
@@ -513,13 +539,13 @@ class CharacterCreation(Screen):
             colour = TEXT if value == STAT_DEFAULT else (GOOD if value > STAT_DEFAULT else BAD)
             surface.blit(font.render(stat.label, True, MUTED), (rect.x, y))
             text = font.render(f"{value}  {self.stats.label(stat)}", True, colour)
-            surface.blit(text, (rect.x + 110, y))
-            y += self.small.line_height + 2
+            surface.blit(text, (rect.x + px(110), y))
+            y += self.small.line_height + px(2)
 
-        y += 8
+        y += px(8)
         for definition, rank in self.skills.trained():
             surface.blit(font.render(definition.label, True, MUTED), (rect.x, y))
             surface.blit(
-                font.render(self.skills.label(definition.key), True, TEXT), (rect.x + 110, y)
+                font.render(self.skills.label(definition.key), True, TEXT), (rect.x + px(110), y)
             )
-            y += self.small.line_height + 2
+            y += self.small.line_height + px(2)

@@ -12,6 +12,7 @@ from __future__ import annotations
 from enum import Enum
 
 from ..settings import LayoutMode
+from .metrics import design_size
 
 
 class FormFactor(Enum):
@@ -31,8 +32,13 @@ PORTRAIT_RATIO = 1.15
 
 
 def measure(window: tuple[int, int]) -> FormFactor:
-    """The form factor a window of this size wants."""
-    width, height = window
+    """The form factor a window of this size wants.
+
+    Measured in design units, not pixels: whether a screen is phone-shaped
+    is a question about its physical size. A 1170-pixel-wide phone would
+    otherwise be mistaken for a desktop.
+    """
+    width, height = design_size(window)
     if width < MIN_WIDE_WIDTH:
         return FormFactor.COMPACT
     if width / max(height, 1) < PORTRAIT_RATIO:
