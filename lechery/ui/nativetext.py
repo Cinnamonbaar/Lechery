@@ -27,6 +27,18 @@ from typing import Optional
 # bottom of the page where nothing could tap it.
 from . import metrics
 
+#: iOS zooms the page whenever a focused input's text is smaller than this,
+#: then scrolls the field into view -- which reads as the screen lurching
+#: and zooming the moment you tap. Staying at or above it is the only way
+#: to decline, short of disabling zoom for the whole page.
+MIN_FONT_PX = 16
+
+#: Every input currently on the page. Kept so the frame loop can ask
+#: whether one is focused: a phone keyboard opening shrinks the viewport,
+#: and resizing the display in response destroys the focus that opened it.
+_LIVE: list["NativeInput"] = []
+
+
 #: Above the canvas, whatever it claims for itself. SDL styles the canvas
 #: without asking, so competing politely here just loses the tap.
 Z_INDEX = 2147483000
@@ -69,6 +81,11 @@ def game_canvas():
         return window.document.getElementById("canvas")
     except Exception:
         return None
+
+
+def any_focused() -> bool:
+    """Whether the player is typing into any overlaid field."""
+    return any(field.focused for field in _LIVE)
 
 
 def ask_text(prompt: str, initial: str = "") -> Optional[str]:
@@ -155,12 +172,13 @@ class NativeInput:
             style.color = colour
             style.caretColor = "#dec088"
             style.fontFamily = "Georgia, serif"
-            style.fontSize = f"{font_size}px"
+            style.fontSize = f"{max(font_size, MIN_FONT_PX)}px"
             style.padding = "0 10px"
             style.margin = "0"
 
             document.body.appendChild(element)
             self.element = element
+            _LIVE.append(self)
             self.move(rect)
         except Exception:
             # A browser that will not have it is not worth crashing over;
@@ -208,6 +226,8 @@ class NativeInput:
     def destroy(self) -> None:
         """Remove the element. Leaking these leaves invisible inputs on the
         page that keep catching taps meant for the game."""
+        if self in _LIVE:
+            _LIVE.remove(self)
         if self.element is None:
             return
         try:

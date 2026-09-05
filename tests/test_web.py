@@ -364,3 +364,59 @@ def test_resizing_the_app_repicks_the_layout():
     app.resize((390, 844))
     assert app.form is FormFactor.COMPACT
     assert app.window == (390, 844)
+
+
+# -- the on-screen keyboard shrinking the viewport ------------------------
+
+
+def test_the_keyboard_shrinking_the_viewport_is_not_a_resize():
+    """The bug: tapping the field deselected it instantly.
+
+    An on-screen keyboard takes room from the bottom of the page. Treating
+    that as a resize recreates the display, which destroys the focus that
+    opened the keyboard in the first place.
+    """
+    import main as entry
+
+    phone = (390, 844)
+    with_keyboard = (390, 480)
+    assert entry.should_adopt(phone, with_keyboard, typing=True) is False
+
+
+def test_a_rotation_is_still_adopted_while_typing():
+    """Width is the reliable signal: a keyboard never changes it."""
+    import main as entry
+
+    assert entry.should_adopt((390, 844), (844, 390), typing=True) is True
+
+
+def test_the_viewport_growing_back_is_adopted():
+    """Dismissing the keyboard must restore the full-height layout."""
+    import main as entry
+
+    assert entry.should_adopt((390, 480), (390, 844), typing=True) is True
+
+
+def test_a_height_change_with_nothing_focused_is_a_real_resize():
+    import main as entry
+
+    assert entry.should_adopt((390, 844), (390, 700), typing=False) is True
+
+
+def test_no_change_is_not_a_resize():
+    import main as entry
+
+    assert entry.should_adopt((390, 844), (390, 844), typing=False) is False
+
+
+def test_overlaid_fields_are_never_reported_focused_off_the_web():
+    from lechery.ui import nativetext
+
+    assert nativetext.any_focused() is False
+
+
+def test_the_input_font_is_large_enough_that_ios_will_not_zoom():
+    """Below 16px Safari zooms the page and scrolls the field into view."""
+    from lechery.ui.nativetext import MIN_FONT_PX
+
+    assert MIN_FONT_PX >= 16

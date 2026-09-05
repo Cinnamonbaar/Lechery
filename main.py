@@ -37,6 +37,7 @@ try:
 
     from lechery.platform import is_web
     from lechery.settings import Settings
+    from lechery.ui import nativetext
     from lechery.ui.app import App
     from lechery.ui.metrics import set_scale
 except Exception:  # pragma: no cover - exercised only when an import breaks
@@ -120,6 +121,25 @@ def match_canvas_to_page(size: tuple[int, int], viewport: tuple[int, int]) -> No
         canvas.style.height = f"{viewport[1]}px"
     except Exception:
         pass
+
+
+def should_adopt(previous: tuple[int, int], current: tuple[int, int], typing: bool) -> bool:
+    """Whether a viewport change is a real one worth resizing for.
+
+    An on-screen keyboard shrinks the viewport's height, and resizing the
+    display in response destroys the focus that opened the keyboard -- the
+    field deselects itself the instant it is tapped. So a height-only
+    shrink while a field is focused is the keyboard, not a resize.
+
+    Rotation changes the width, which is why width is the reliable signal.
+    """
+    if current == previous:
+        return False
+    if current[0] != previous[0]:
+        return True  # width changed: a real resize or a rotation
+    if typing and current[1] < previous[1]:
+        return False  # the keyboard taking room at the bottom
+    return True
 
 
 def browser_viewport() -> tuple[int, int] | None:
@@ -278,7 +298,9 @@ async def run(seed: int | None = None) -> int:
             frame += 1
             if frame % VIEWPORT_POLL == 0:
                 current = browser_viewport()
-                if current is not None and current != viewport:
+                if current is not None and should_adopt(
+                    viewport, current, nativetext.any_focused()
+                ):
                     viewport = current
                     scale = set_scale(device_pixel_ratio())
                     size = (round(viewport[0] * scale), round(viewport[1] * scale))
