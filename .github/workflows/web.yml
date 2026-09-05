@@ -56,6 +56,25 @@ jobs:
           }
           du -sh build/web
 
+      - name: Check the page can reach everything it asks for
+        # A script tag pointing at a file that was never copied fails
+        # silently in the browser, and on a phone there is no console to
+        # find out from. Every local script the page references must exist.
+        run: |
+          echo "--- build/web ---"
+          ls -la build/web
+          echo "--- local scripts referenced by index.html ---"
+          grep -oE '<script src="[^":]+"' build/web/index.html | sed 's/.*src="//;s/"//' > refs.txt
+          cat refs.txt
+          status=0
+          while read -r ref; do
+            if [ ! -f "build/web/$ref" ]; then
+              echo "::error::index.html references $ref, which is not in build/web"
+              status=1
+            fi
+          done < refs.txt
+          exit $status
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
