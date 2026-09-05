@@ -159,13 +159,15 @@ class NativeInput:
         self.element = None
         self._rect = None
 
-        document = browser_document()
-        if document is None:
-            return
-
+        # Assigned before anything can bail out, so every instance has a
+        # distinct id whether or not it ever gets an element.
         global _NEXT_ID
         _NEXT_ID += 1
         self.element_id = f"lechery-field-{_NEXT_ID}"
+
+        document = browser_document()
+        if document is None:
+            return
 
         try:
             element = document.createElement("input")
