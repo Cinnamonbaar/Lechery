@@ -28,6 +28,11 @@ OUTPUT = ROOT / "build" / "web"
 #: Everything the game needs at runtime, and nothing else.
 SHIPPED = ["main.py", "lechery", "assets"]
 
+#: Canvas size, passed to pygbag so the page and main.py's set_mode agree.
+#: Left to differ, the game lays itself out against a surface it did not
+#: get, which looks exactly like a crash.
+CANVAS = (1280, 760)
+
 #: Dropped from the staged copy: caches and bytecode add weight and nothing
 #: else, and they are regenerated on the player's machine anyway.
 JUNK = shutil.ignore_patterns("__pycache__", "*.pyc", ".*")
@@ -68,7 +73,17 @@ def main(argv: list[str]) -> int:
     print(f"staged {files} files ({size / 1024:.0f} KiB) in {staged}")
 
     serving = "--serve" in argv
-    command = [sys.executable, "-m", "pygbag", "--title", "Lechery"]
+    command = [
+        sys.executable,
+        "-m",
+        "pygbag",
+        "--title",
+        "Lechery",
+        "--width",
+        str(CANVAS[0]),
+        "--height",
+        str(CANVAS[1]),
+    ]
     if not serving:
         command.append("--build")
     command.append(str(staged))

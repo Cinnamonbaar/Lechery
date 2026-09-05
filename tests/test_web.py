@@ -252,3 +252,66 @@ def test_a_crash_paints_the_screen_rather_than_leaving_it_blank():
 
     asyncio.run(drive())
     assert surface.get_at((5, 5))[:3] == entry.CRASH_BG, "the canvas should be painted"
+
+
+def test_the_entry_module_never_raises_system_exit_at_module_scope():
+    """pygbag runs main.py as __main__; a SystemExit there ends the app.
+
+    Asserted on the source because the failure only happens under pygbag,
+    where there is nothing to observe it with.
+    """
+    import ast
+    import pathlib
+
+    source = pathlib.Path(__file__).resolve().parent.parent / "main.py"
+    tree = ast.parse(source.read_text())
+
+    for node in tree.body:
+        for inner in ast.walk(node):
+            if isinstance(inner, ast.Raise) and isinstance(inner.exc, ast.Call):
+                name = getattr(inner.exc.func, "id", "")
+                assert name != "SystemExit", "SystemExit at module scope ends a pygbag app"
+
+
+def test_game_imports_are_guarded_so_a_failure_can_be_reported():
+    """An import error happens before any handler could otherwise run."""
+    import main as entry
+
+    assert hasattr(entry, "IMPORT_ERROR")
+    assert entry.IMPORT_ERROR is None, "the game should import cleanly here"
+
+
+def test_a_failure_is_reported_by_every_route_available():
+    import main as entry
+
+    surface = pygame.display.get_surface()
+    surface.fill((0, 0, 0))
+
+    entry.report("Traceback: something broke")
+
+    # No browser here, so the page route is unavailable and the canvas
+    # route must have carried it.
+    assert entry.report_to_page("x") is False
+    assert surface.get_at((5, 5))[:3] == entry.CRASH_BG
+
+
+def test_reporting_survives_there_being_no_display(monkeypatch):
+    """The canvas may not exist yet when the failure happens."""
+    import main as entry
+
+    monkeypatch.setattr(entry.pygame.display, "get_surface", lambda: None)
+    assert entry.report_to_canvas("boom") is False
+    entry.report("boom")  # must not raise
+
+
+def test_the_build_canvas_matches_the_size_the_game_asks_for():
+    """Different sizes lay the interface out against a surface we never got."""
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+    import buildweb
+
+    import main as entry
+
+    assert buildweb.CANVAS == entry.SIZE

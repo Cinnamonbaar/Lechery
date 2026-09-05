@@ -2,11 +2,21 @@
 
 The loop is async because pygbag requires it: a WASM build shares the
 browser's single thread, so a frame that never yields locks the tab. The
-`await asyncio.sleep(0)` is that yield. It costs nothing on the desktop,
-where `asyncio.run` drives the same coroutine.
+`await asyncio.sleep(0)` is that yield.
 
-pygbag looks for a top-level `main.py` that runs an async entry point, so
-the shape of this file is part of the build contract -- keep it here.
+The shape of this file is part of pygbag's build contract, and three things
+about it are deliberate:
+
+  Imports are guarded, because an import failure happens before any of our
+  error handling could otherwise run, and in a browser that is a blank
+  canvas with no explanation.
+
+  Nothing raises SystemExit at module scope. pygbag executes this module as
+  __main__, and a SystemExit propagating out of it ends the app rather than
+  the frame.
+
+  The loop is entered through a coroutine that never assumes it owns the
+  event loop, because in a browser it does not.
 
     python main.py 1234        # desktop, replaying seed 1234
     python tools/buildweb.py   # build the web version
@@ -18,11 +28,18 @@ import asyncio
 import sys
 import traceback
 
-import pygame
+#: Recorded rather than raised: if importing the game fails, this file must
+#: still load far enough to be able to say so.
+IMPORT_ERROR: str | None = None
 
-from lechery.platform import is_web
-from lechery.settings import Settings
-from lechery.ui.app import App
+try:
+    import pygame
+
+    from lechery.platform import is_web
+    from lechery.settings import Settings
+    from lechery.ui.app import App
+except Exception:  # pragma: no cover - exercised only when an import breaks
+    IMPORT_ERROR = traceback.format_exc()
 
 SIZE = (1280, 760)
 FPS = 60
@@ -40,9 +57,8 @@ def parse_seed(argv: list[str]) -> int | None:
     """The seed, if one was given and it is actually a number.
 
     Defensive because argv is not ours in a web build: pygbag invokes the
-    module with whatever it likes, and `int()` on that would raise before
-    the first frame -- which in a browser looks like a blank canvas and no
-    explanation at all.
+    module with whatever it likes, and int() on that would raise before the
+    first frame.
     """
     for argument in argv:
         if argument.lstrip("-").isdigit():
@@ -50,27 +66,52 @@ def parse_seed(argv: list[str]) -> int | None:
     return None
 
 
-async def show_crash(screen: pygame.Surface, report: str) -> None:
-    """Draw a traceback on the canvas and hold it there.
+# -- reporting a failure the player can actually see ----------------------
 
-    In a browser an unhandled exception leaves a grey canvas and nothing
-    else -- no console the player can reach, especially on a phone. Putting
-    the traceback on screen is the difference between a bug report and
-    "it doesn't work".
+
+def report_to_page(text: str) -> bool:
+    """Write a failure into the web page itself. Returns whether it worked.
+
+    The canvas is useless for reporting a failure that happened before the
+    canvas existed, and a phone has no console. pygbag exposes the browser
+    window, so the document is the one surface guaranteed to be there.
     """
-    print(report, file=sys.stderr)
-
-    # The font system may be what failed, so a plain fill happens first and
-    # unconditionally: a red screen at least says "it crashed" rather than
-    # "it never started".
-    screen.fill(CRASH_BG)
-    pygame.display.flip()
-
     try:
+        import platform as runtime  # pygbag replaces this with its own
+
+        window = getattr(runtime, "window", None)
+        if window is None:
+            return False
+
+        escaped = (
+            text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        )
+        window.document.body.innerHTML = (
+            "<pre style='white-space:pre-wrap;word-break:break-word;"
+            "background:#231014;color:#f0dcd8;font:13px/1.45 monospace;"
+            "margin:0;padding:14px;min-height:100vh'>" + escaped + "</pre>"
+        )
+        return True
+    except Exception:
+        return False
+
+
+def report_to_canvas(text: str) -> bool:
+    """Paint a failure onto the display, if there is one."""
+    try:
+        screen = pygame.display.get_surface()
+        if screen is None:
+            return False
+
+        # Fill first and unconditionally: the font system may be what
+        # failed, and a red screen saying "it crashed" beats one saying
+        # nothing at all.
+        screen.fill(CRASH_BG)
+        pygame.display.flip()
+
         font = pygame.font.Font(None, 20)
         lines: list[str] = []
-        for line in report.splitlines():
-            # Long paths wrap badly; the tail of each line is the useful part.
+        for line in text.splitlines():
             while len(line) > 78:
                 lines.append(line[:78])
                 line = line[78:]
@@ -81,45 +122,67 @@ async def show_crash(screen: pygame.Surface, report: str) -> None:
             screen.blit(font.render(line, True, CRASH_TEXT), (14, y))
             y += 22
         pygame.display.flip()
-    except Exception:  # pragma: no cover - the last-resort path
-        pass
+        return True
+    except Exception:
+        return False
 
-    # Keep yielding, or the tab freezes on the error screen too.
+
+def report(text: str) -> None:
+    """Get a failure in front of the player by whatever means work."""
+    print(text, file=sys.stderr)
+    report_to_page(text)
+    report_to_canvas(text)
+
+
+async def show_crash(screen, report_text: str) -> None:
+    """Report a crash and hold the app alive so the message stays up."""
+    report(report_text)
     while True:
-        pygame.event.get()
+        try:
+            pygame.event.get()
+        except Exception:
+            pass
         await asyncio.sleep(0.1)
 
 
+# -- the game -------------------------------------------------------------
+
+
 async def run(seed: int | None = None) -> int:
-    pygame.init()
-    pygame.display.set_caption("Lechery")
+    """Set up and run the game. Any failure ends up on screen."""
+    if IMPORT_ERROR is not None:
+        report(IMPORT_ERROR)
+        while True:
+            await asyncio.sleep(0.1)
 
-    # RESIZABLE is a desktop affordance; in a browser the canvas size is the
-    # template's business, and asking for a mode it cannot give is a way to
-    # fail before anything is drawn.
-    flags = 0 if is_web() else pygame.RESIZABLE
-    screen = pygame.display.set_mode(SIZE, flags)
-
-    # The canvas may not be the size we asked for, so the app measures what
-    # it actually got. Getting this wrong puts the whole UI off-screen.
-    size = screen.get_size()
-    clock = pygame.time.Clock()
-
+    screen = None
     try:
-        app = App(size, Settings.load())
+        pygame.init()
+        pygame.display.set_caption("Lechery")
+
+        # RESIZABLE is a desktop affordance; a browser canvas is sized by
+        # the page, and asking for a mode it cannot give fails before
+        # anything is drawn.
+        flags = 0 if is_web() else pygame.RESIZABLE
+        screen = pygame.display.set_mode(SIZE, flags)
+
+        # The canvas may not be the size requested, so measure what arrived.
+        # Laying out against a size we did not get puts the interface
+        # off-screen, which looks identical to a crash.
+        app = App(screen.get_size(), Settings.load())
         if seed is not None:
             from lechery.traits import default_character
 
             app.start_game(default_character(), seed=seed)
 
+        clock = pygame.time.Clock()
         running = True
         while running:
             dt = min(clock.tick(FPS) / 1000.0, MAX_STEP)
             running = app.step(screen, pygame.event.get(), dt)
             pygame.display.flip()
 
-            # Hand the frame back to the browser. Awaited every pass,
-            # including the one that quits.
+            # Hand the frame back to the browser, every pass.
             await asyncio.sleep(0)
     except Exception:
         await show_crash(screen, traceback.format_exc())
@@ -128,9 +191,22 @@ async def run(seed: int | None = None) -> int:
     return 0
 
 
-def main(argv: list[str]) -> int:
-    return asyncio.run(run(parse_seed(argv)))
+def main(argv: list[str] | None = None) -> int:
+    """Desktop entry. Not used by the browser, which awaits `run` directly."""
+    return asyncio.run(run(parse_seed(argv or [])))
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+    # No SystemExit: pygbag runs this module as __main__, and an exception
+    # propagating out of it ends the app instead of the frame. On the
+    # desktop asyncio.run owns the loop; in a browser one is already
+    # running, so the coroutine is handed to it instead.
+    try:
+        _loop = asyncio.get_running_loop()
+    except RuntimeError:
+        _loop = None
+
+    if _loop is None:
+        asyncio.run(run(parse_seed(sys.argv[1:])))
+    else:
+        _loop.create_task(run(parse_seed(sys.argv[1:])))
