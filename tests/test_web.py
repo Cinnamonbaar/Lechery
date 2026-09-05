@@ -420,3 +420,63 @@ def test_the_input_font_is_large_enough_that_ios_will_not_zoom():
     from lechery.ui.nativetext import MIN_FONT_PX
 
     assert MIN_FONT_PX >= 16
+
+
+def test_a_present_field_alone_blocks_a_keyboard_shaped_resize():
+    """The safety net.
+
+    Focus detection depends on the browser bridge behaving, and that is
+    exactly what failed: the bridge returns a fresh proxy per attribute
+    access, so an identity check on activeElement always said "not
+    focused". A field merely existing is enough to refuse a height-only
+    shrink.
+    """
+    import main as entry
+
+    assert entry.should_adopt((390, 844), (390, 480), typing=False, fields_present=True) is False
+    assert entry.should_adopt((390, 844), (390, 480), typing=False, fields_present=False) is True
+
+
+def test_focus_is_compared_by_id_not_object_identity():
+    """Two proxies for the same element are never `is`-identical."""
+    import types
+
+    from lechery.ui.nativetext import NativeInput
+
+    field = NativeInput.__new__(NativeInput)
+    field.element = object()
+    field.element_id = "lechery-field-1"
+
+    # A bridge that hands back a different object each time, as pygbag's does.
+    def fresh_proxy():
+        return types.SimpleNamespace(id="lechery-field-1")
+
+    class Document:
+        @property
+        def activeElement(self):
+            return fresh_proxy()
+
+        @property
+        def body(self):
+            return None
+
+    import lechery.ui.nativetext as nativetext
+
+    original = nativetext.browser_document
+    nativetext.browser_document = lambda: Document()
+    try:
+        assert field.focused, "identity would fail here; the id must match"
+        field.element_id = "lechery-field-2"
+        assert not field.focused
+    finally:
+        nativetext.browser_document = original
+
+
+def test_every_field_gets_a_distinct_id():
+    from lechery.ui.nativetext import NativeInput
+
+    import pygame
+
+    first = NativeInput(pygame.Rect(0, 0, 10, 10))
+    second = NativeInput(pygame.Rect(0, 0, 10, 10))
+    assert first.element_id != second.element_id

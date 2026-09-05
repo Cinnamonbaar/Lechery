@@ -33,6 +33,13 @@ from . import metrics
 #: to decline, short of disabling zoom for the whole page.
 MIN_FONT_PX = 16
 
+#: Serial number for element ids. Focus is compared by id rather than by
+#: object identity: the browser bridge returns a fresh proxy object on
+#: every attribute access, so two proxies for the same element are never
+#: `is`-identical and an identity check silently always says "not focused".
+_NEXT_ID = 0
+
+
 #: Every input currently on the page. Kept so the frame loop can ask
 #: whether one is focused: a phone keyboard opening shrinks the viewport,
 #: and resizing the display in response destroys the focus that opened it.
@@ -88,6 +95,16 @@ def any_focused() -> bool:
     return any(field.focused for field in _LIVE)
 
 
+def any_present() -> bool:
+    """Whether any overlaid field exists at all.
+
+    Used as the safety net behind `any_focused`: focus detection depends on
+    the browser bridge behaving, and it is precisely the thing that failed
+    here, so the viewport rules do not rest on it alone.
+    """
+    return bool(_LIVE)
+
+
 def ask_text(prompt: str, initial: str = "") -> Optional[str]:
     """Ask for a line of text with the browser's own dialog.
 
@@ -126,6 +143,9 @@ def css_geometry(rect) -> tuple[float, float, float, float]:
 class NativeInput:
     """An <input> element tracking one on-canvas text field."""
 
+    #: This element's DOM id, unique per instance.
+    element_id: str = ""
+
     def __init__(
         self,
         rect,
@@ -143,8 +163,13 @@ class NativeInput:
         if document is None:
             return
 
+        global _NEXT_ID
+        _NEXT_ID += 1
+        self.element_id = f"lechery-field-{_NEXT_ID}"
+
         try:
             element = document.createElement("input")
+            element.id = self.element_id
             element.type = "text"
             element.value = text
             element.maxLength = max_length
@@ -215,11 +240,21 @@ class NativeInput:
 
     @property
     def focused(self) -> bool:
+        """Whether this element currently has focus.
+
+        Compared by id, not by identity: the bridge returns a new proxy for
+        every attribute access, so `document.activeElement is self.element`
+        is False even while the element is focused -- which made the frame
+        loop resize the display out from under the keyboard.
+        """
         document = browser_document()
         if self.element is None or document is None:
             return False
         try:
-            return document.activeElement is self.element
+            active = document.activeElement
+            if active is None:
+                return False
+            return str(active.id) == self.element_id
         except Exception:
             return False
 

@@ -123,21 +123,29 @@ def match_canvas_to_page(size: tuple[int, int], viewport: tuple[int, int]) -> No
         pass
 
 
-def should_adopt(previous: tuple[int, int], current: tuple[int, int], typing: bool) -> bool:
+def should_adopt(
+    previous: tuple[int, int],
+    current: tuple[int, int],
+    typing: bool,
+    fields_present: bool = False,
+) -> bool:
     """Whether a viewport change is a real one worth resizing for.
 
     An on-screen keyboard shrinks the viewport's height, and resizing the
     display in response destroys the focus that opened the keyboard -- the
-    field deselects itself the instant it is tapped. So a height-only
-    shrink while a field is focused is the keyboard, not a resize.
+    field deselects itself the instant it is tapped.
 
-    Rotation changes the width, which is why width is the reliable signal.
+    Width is the reliable signal for a real change: a keyboard never alters
+    it, and a rotation always does. A height-only shrink is refused while a
+    field is focused *or* merely present -- the second condition is the
+    safety net, because focus detection depends on the browser bridge and
+    is exactly what failed before.
     """
     if current == previous:
         return False
     if current[0] != previous[0]:
         return True  # width changed: a real resize or a rotation
-    if typing and current[1] < previous[1]:
+    if (typing or fields_present) and current[1] < previous[1]:
         return False  # the keyboard taking room at the bottom
     return True
 
@@ -299,7 +307,10 @@ async def run(seed: int | None = None) -> int:
             if frame % VIEWPORT_POLL == 0:
                 current = browser_viewport()
                 if current is not None and should_adopt(
-                    viewport, current, nativetext.any_focused()
+                    viewport,
+                    current,
+                    nativetext.any_focused(),
+                    nativetext.any_present(),
                 ):
                     viewport = current
                     scale = set_scale(device_pixel_ratio())
