@@ -1,0 +1,56 @@
+name: Back up the repository
+
+# Insurance against losing the repo to a takedown, an account problem, or a
+# mistake. A git bundle is the whole history in one file: `git clone` it and
+# you have the repository back, remotes and all.
+on:
+  push:
+    branches: [main, "claude/**"]
+  schedule:
+    # Weekly, so a repo that goes quiet still has a recent backup.
+    - cron: "17 4 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # a shallow clone cannot make a usable bundle
+
+      - name: Pack the full history into one file
+        run: |
+          git bundle create lechery-$(date +%Y%m%d).bundle --all
+          git bundle verify lechery-$(date +%Y%m%d).bundle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repo-bundle
+          path: "*.bundle"
+          retention-days: 90
+
+  mirror:
+    runs-on: ubuntu-latest
+    # Skipped silently until the secrets exist, so adding a mirror later is
+    # two secrets and no code change. Set MIRROR_URL to a push URL and
+    # MIRROR_TOKEN to a token that host accepts.
+    if: vars.MIRROR_ENABLED == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push a mirror
+        env:
+          MIRROR_URL: ${{ secrets.MIRROR_URL }}
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          if [ -z "$MIRROR_URL" ]; then
+            echo "::warning::MIRROR_ENABLED is set but MIRROR_URL is empty"
+            exit 0
+          fi
+          git push --mirror "$(echo "$MIRROR_URL" | sed "s#://#://x-access-token:${MIRROR_TOKEN}@#")"

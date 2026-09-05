@@ -66,3 +66,31 @@ Two constraints the web build puts on the code, both already handled:
 
 Only `lechery/ui` imports pygame. Everything else is plain Python, which is
 why the whole simulation is testable without a display.
+
+## Playing it on a phone
+
+Every push to `main` builds the web version and publishes it to GitHub
+Pages; open that URL on a phone and refresh after each push. Nothing needs
+installing on the phone, and no desktop is involved.
+
+Pushes to working branches build and test but do not publish, so a broken
+build shows up before it reaches the phone rather than after.
+
+Most iteration does not need a phone at all: `F5` cycles the layout to
+compact on the desktop, and the on-screen stick accepts mouse drags for
+exactly that reason.
+
+## Backups
+
+`.github/workflows/backup.yml` packs the entire history into a git bundle on
+every push and weekly, kept as a downloadable artifact for 90 days. A bundle
+is a whole repository in one file — `git clone lechery-YYYYMMDD.bundle` gives
+it all back.
+
+To also mirror to a second host, add repository secrets `MIRROR_URL` (a push
+URL) and `MIRROR_TOKEN`, then set the variable `MIRROR_ENABLED` to `true`.
+The mirror step is host-agnostic on purpose: pick a destination after
+checking its content policy, since hosts differ on what they will keep.
+
+Artifacts expire. If this project matters to you, download a bundle
+periodically and keep it somewhere that is not GitHub.

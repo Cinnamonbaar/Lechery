@@ -1,0 +1,72 @@
+name: Build and publish the web version
+
+# Runs on both branches so a build break shows up on the working branch
+# rather than at merge time. Only main publishes.
+on:
+  push:
+    branches: [main, "claude/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A newer push should cancel an in-flight build rather than queue behind it:
+# when iterating from a phone, the latest push is the only one that matters.
+concurrency:
+  group: web
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+          pip install pygbag
+
+      - name: Run tests
+        # A broken build reaching the phone wastes a round trip, so the
+        # suite gates the deploy. It needs no display beyond SDL's dummy.
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: python -m pytest -q
+
+      - name: Build the web bundle
+        run: python tools/buildweb.py
+
+      - name: Check the build actually produced a page
+        # pygbag fetches its runtime from a CDN and can fail without a
+        # non-zero exit, leaving a directory with no index.html in it.
+        # Failing here beats publishing a blank page.
+        run: |
+          test -f build/web/index.html || {
+            echo "::error::pygbag produced no index.html"
+            ls -la build/web || true
+            exit 1
+          }
+          du -sh build/web
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
