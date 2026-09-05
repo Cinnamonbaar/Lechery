@@ -1,0 +1,30 @@
+name: Dump the pygbag loading template
+
+# Run by hand. pygbag fetches its page template from a CDN, and the
+# development sandbox cannot reach it -- so the template is printed here,
+# where there is network, to be read out of the log and replaced properly.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch and print the template
+        run: |
+          pip install pygbag --quiet
+          VERSION=$(python -c "import pygbag; print(pygbag.VERSION)")
+          URL="https://pygame-web.github.io/cdn/${VERSION}/default.tmpl"
+          echo "template: $URL"
+          curl -fsSL "$URL" -o default.tmpl
+          echo "bytes: $(wc -c < default.tmpl), lines: $(wc -l < default.tmpl)"
+          echo "----- BEGIN TEMPLATE -----"
+          cat -n default.tmpl
+          echo "----- END TEMPLATE -----"

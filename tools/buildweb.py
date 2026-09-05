@@ -79,6 +79,11 @@ def main(argv: list[str]) -> int:
         "pygbag",
         "--title",
         "Lechery",
+        # No "click to start" gate. It exists so a browser will let the
+        # audio context open on a user gesture; with no audio yet it is a
+        # pointless step between the player and the game.
+        "--ume_block",
+        "0",
         "--width",
         str(CANVAS[0]),
         "--height",
