@@ -19,6 +19,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 STAGE = ROOT / "build" / "stage"
 
+#: pygbag writes its output to <app_dir>/build/web, and the app dir is the
+#: staging directory -- so the result lands nested. It is moved up to this
+#: predictable path afterwards, since a build whose output location depends
+#: on how it was invoked is a trap for every caller.
+OUTPUT = ROOT / "build" / "web"
+
 #: Everything the game needs at runtime, and nothing else.
 SHIPPED = ["main.py", "lechery", "assets"]
 
@@ -43,19 +49,53 @@ def stage() -> Path:
     return STAGE
 
 
+def collect() -> Path:
+    """Move pygbag's nested output up to build/web. Returns that path."""
+    produced = STAGE / "build" / "web"
+    if not produced.is_dir():
+        raise FileNotFoundError(f"pygbag produced nothing at {produced}")
+
+    if OUTPUT.exists():
+        shutil.rmtree(OUTPUT)
+    shutil.move(str(produced), str(OUTPUT))
+    return OUTPUT
+
+
 def main(argv: list[str]) -> int:
     staged = stage()
     files = sum(1 for _ in staged.rglob("*") if _.is_file())
     size = sum(f.stat().st_size for f in staged.rglob("*") if f.is_file())
     print(f"staged {files} files ({size / 1024:.0f} KiB) in {staged}")
 
+    serving = "--serve" in argv
     command = [sys.executable, "-m", "pygbag", "--title", "Lechery"]
-    if "--serve" not in argv:
+    if not serving:
         command.append("--build")
     command.append(str(staged))
 
     print(" ".join(command))
-    return subprocess.call(command)
+    code = subprocess.call(command)
+    if code or serving:
+        # Serving leaves pygbag's own server pointed at the nested path, so
+        # there is nothing to move and nothing to check.
+        return code
+
+    try:
+        output = collect()
+    except FileNotFoundError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+
+    page = output / "index.html"
+    if not page.is_file():
+        # pygbag can finish successfully having fetched nothing useful, so
+        # the page is checked here rather than trusting the exit code.
+        print(f"error: no index.html in {output}", file=sys.stderr)
+        return 1
+
+    total = sum(f.stat().st_size for f in output.rglob("*") if f.is_file())
+    print(f"built {output} ({total / 1024:.0f} KiB)")
+    return 0
 
 
 if __name__ == "__main__":
