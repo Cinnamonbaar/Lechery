@@ -74,6 +74,26 @@ def parse_seed(argv: list[str]) -> int | None:
     return None
 
 
+def hide_loading_screen() -> None:
+    """Take the loading page down once the game is drawing.
+
+    The template hides it itself, but only in ways this game's own styles
+    could defeat -- and a loading screen left over the first frame is the
+    kind of thing that looks like a rendering bug. Setting the style
+    directly is the one instruction nothing else can outrank.
+    """
+    window = browser_window()
+    if window is None:
+        return
+    for name in ("transfer", "infobox"):
+        try:
+            element = window.document.getElementById(name)
+            if element is not None:
+                element.style.display = "none"
+        except Exception:
+            pass
+
+
 def browser_window():
     """pygbag's handle on the browser window, or None."""
     try:
@@ -308,10 +328,17 @@ async def run(seed: int | None = None) -> int:
         clock = pygame.time.Clock()
         running = True
         frame = 0
+        painted = False
         while running:
             dt = min(clock.tick(FPS) / 1000.0, MAX_STEP)
             running = app.step(screen, pygame.event.get(), dt)
             pygame.display.flip()
+
+            if not painted:
+                # After the first real frame, so the loading screen is
+                # replaced by the game rather than by a blank canvas.
+                hide_loading_screen()
+                painted = True
 
             # A browser sends no resize event pygame can see, so the
             # viewport is polled. This is what catches a phone rotating.

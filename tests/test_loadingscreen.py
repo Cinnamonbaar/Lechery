@@ -151,3 +151,24 @@ def test_a_successful_build_writes_a_patched_template(tmp_path, monkeypatch):
 
     assert loadingscreen.build("0.9.3", destination) is True
     assert "powderblue" not in destination.read_text()
+
+
+def test_the_hidden_attribute_still_hides_the_loading_screen(patched):
+    """The bug: it stayed on screen over the menu.
+
+    The template hides it with the `hidden` attribute, which applies
+    display:none from the browser's own stylesheet. Our `display: flex` is
+    an author rule and outranks that, so the element was hidden in name
+    only until this rule put it back.
+    """
+    assert "#transfer[hidden]" in patched
+
+    rule = patched[patched.index("#transfer[hidden]"):]
+    rule = rule[: rule.index("}")]
+    assert "display: none !important" in rule
+
+
+def test_the_override_comes_after_the_rule_it_has_to_beat(patched):
+    """Equal specificity is decided by order; !important settles it anyway,
+    but relying on both is free."""
+    assert patched.index("#transfer {") < patched.index("#transfer[hidden]")

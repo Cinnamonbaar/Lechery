@@ -73,6 +73,15 @@ EXTRA_CSS = f"""
             pointer-events: none;
         }}
 
+        /* The template hides this with the `hidden` attribute, which works
+           by applying display:none from the browser's own stylesheet. The
+           rule above is an author rule and beats it, so without this the
+           loading screen stays on screen over the game, hidden in name
+           only. */
+        #transfer[hidden] {{
+            display: none !important;
+        }}
+
         #brand {{
             font-family: Georgia, "Times New Roman", serif;
             font-size: 34px;

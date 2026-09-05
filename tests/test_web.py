@@ -480,3 +480,43 @@ def test_every_field_gets_a_distinct_id():
     first = NativeInput(pygame.Rect(0, 0, 10, 10))
     second = NativeInput(pygame.Rect(0, 0, 10, 10))
     assert first.element_id != second.element_id
+
+
+def test_hiding_the_loading_screen_is_safe_without_a_browser():
+    import main as entry
+
+    entry.hide_loading_screen()  # must not raise
+
+
+def test_the_loading_screen_is_taken_down_from_the_game_too(monkeypatch):
+    """A belt-and-braces hide, since the template's own is defeatable by CSS."""
+    import types
+
+    import main as entry
+
+    hidden = []
+
+    class Element:
+        def __init__(self, name):
+            self.name = name
+            self.style = types.SimpleNamespace()
+
+        def __setattr__(self, key, value):
+            object.__setattr__(self, key, value)
+
+    class Document:
+        def getElementById(self, name):
+            element = Element(name)
+
+            class Style:
+                def __setattr__(inner, key, value):
+                    hidden.append((name, key, value))
+
+            element.style = Style()
+            return element
+
+    monkeypatch.setattr(entry, "browser_window", lambda: types.SimpleNamespace(document=Document()))
+    entry.hide_loading_screen()
+
+    assert ("transfer", "display", "none") in hidden
+    assert ("infobox", "display", "none") in hidden
