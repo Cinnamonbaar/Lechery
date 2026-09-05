@@ -10,6 +10,7 @@
 
   import { AvatarView, NATIVE_SIZE } from "$lib/avatar";
   import type { Character } from "$lib/traits/character";
+  import Rule from "./Rule.svelte";
 
   interface Props {
     character: Character;
@@ -80,7 +81,17 @@
   </div>
 
   {#if showSummary}
-    <p class="summary">{character.summary()}</p>
+    <!-- The name plate. Read is on its own line because it is the thing the
+         game is about: what you are called, then what strangers see. -->
+    <div class="plate">
+      <Rule />
+      <p class="name">{character.name}</p>
+      <p class="read">
+        {character.traits.label("height")} &middot; read as {character
+          .presentation()
+          .label}
+      </p>
+    </div>
   {/if}
 </div>
 
@@ -128,12 +139,23 @@
     color: var(--ink-faint);
   }
 
-  .summary {
-    margin: 0;
-    padding: var(--gap-tight) var(--gap);
-    border-top: 1px solid var(--panel-edge);
-    font-size: var(--font-size-small);
-    color: var(--ink-dim);
+  .plate {
+    padding: var(--gap-tight) var(--gap) var(--gap);
     text-align: center;
+  }
+
+  .name {
+    font-family: var(--font-display);
+    font-size: var(--font-size-title);
+    letter-spacing: var(--tracking);
+    color: var(--ink);
+    margin: var(--gap-tight) 0 2px;
+  }
+
+  .read {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    color: var(--ink-faint);
   }
 </style>

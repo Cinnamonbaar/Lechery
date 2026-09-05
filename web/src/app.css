@@ -1,4 +1,11 @@
-/* Base styles. Structure only -- every value comes from theme.css. */
+/*
+ * Base styles and the shared ornament vocabulary.
+ *
+ * Structure only -- every value comes from theme.css. Anything here that
+ * draws gold is part of the visual language rather than one screen's idea:
+ * the cut-cornered panel, the pill control, the tapered rule with a diamond
+ * in it, and the small rotated square that marks a selection.
+ */
 
 @import "./theme.css";
 
@@ -24,26 +31,74 @@ body {
 
 #app {
   height: 100%;
-  /* Real viewport units, so the iOS keyboard and toolbar cannot letterbox the
-   * layout the way 100vh does. */
+  /* Real viewport units, so the iOS keyboard and toolbar cannot letterbox
+   * the layout the way 100vh does. */
   height: 100dvh;
 }
 
+/* -- the panel shape ---------------------------------------------------
+ * Corners cut rather than rounded, with a gold hairline that follows the
+ * cut. The hairline is the parent's background showing through a one-pixel
+ * pad, because a border cannot follow a clip-path. */
+
+.panel {
+  /* A flex container, so the fill inside can claim the height and scroll
+   * inside it. As a block the fill grows past the frame instead, and the
+   * clip then makes the overflow untappable rather than merely ugly. */
+  display: flex;
+  min-height: 0;
+  --shape: polygon(
+    var(--cut) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%,
+    0 var(--cut)
+  );
+  clip-path: var(--shape);
+  background: var(--panel-edge-strong);
+  padding: var(--hairline);
+}
+
+/* Fills the frame in both axes: a fill narrower than its panel leaves a
+ * band of the hairline colour down the edge, which reads as a stray gold
+ * stripe rather than as a border. */
+.panel > .panel-fill {
+  clip-path: var(--shape);
+  background: var(--panel);
+  background-image: var(--panel-sheen);
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* -- controls ---------------------------------------------------------- */
+
 button {
-  font: inherit;
   font-family: var(--font-ui);
+  font-size: var(--font-size);
   color: var(--ink);
   background: var(--panel-raised);
-  border: 1px solid var(--panel-edge);
-  border-radius: var(--radius-small);
+  background-image: var(--panel-sheen);
+  border: var(--hairline) solid var(--panel-edge);
+  /* Pills, like that game's own buttons and list rows. The cut corner is
+   * for panels; controls are round-ended. */
+  border-radius: 999px;
   min-height: var(--control-height);
-  padding: 0 var(--gap);
+  padding: 0 calc(var(--gap) * 1.2);
   cursor: pointer;
-  transition: background var(--transition), border-color var(--transition);
+  transition:
+    border-color var(--transition),
+    color var(--transition),
+    background var(--transition);
 }
 
 button:hover:not(:disabled) {
-  border-color: var(--accent-soft);
+  border-color: var(--panel-edge-strong);
+  color: var(--gold-bright);
 }
 
 button:disabled {
@@ -51,39 +106,180 @@ button:disabled {
   cursor: default;
 }
 
+/* The one loud control on any screen. There should be at most one. */
 button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(160deg, var(--gold-bright), var(--gold));
+  border-color: var(--gold-bright);
   color: var(--accent-ink);
   font-weight: 600;
+  letter-spacing: var(--tracking);
+  box-shadow: var(--glow);
+}
+
+button.primary:hover:not(:disabled) {
+  color: var(--accent-ink);
+  filter: brightness(1.06);
+}
+
+button.selected {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 14%, var(--panel-raised));
+}
+
+button.ghost {
+  background: none;
+  border-color: transparent;
+}
+
+/* The circular close, top right of a panel, as that game puts it. */
+button.close {
+  width: var(--control-height);
+  min-width: var(--control-height);
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-dim);
 }
 
 input[type="text"] {
-  font: inherit;
+  font-family: var(--font-body);
   font-size: var(--font-size); /* never below 16px; see theme.css */
   color: var(--ink);
-  background: var(--panel-raised);
-  border: 1px solid var(--panel-edge);
-  border-radius: var(--radius-small);
+  background: var(--panel-sunken);
+  border: var(--hairline) solid var(--panel-edge);
+  border-radius: 999px;
   min-height: var(--control-height);
-  padding: 0 var(--gap-tight);
+  padding: 0 var(--gap);
   width: 100%;
 }
 
-input[type="range"] {
-  width: 100%;
-  height: var(--control-height);
-  accent-color: var(--accent);
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: var(--glow);
 }
+
+/* A rail with a gold diamond for a thumb. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 34px;
+  background: none;
+  margin: 0;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    var(--gold-dim),
+    color-mix(in srgb, var(--gold) 35%, transparent)
+  );
+  border-radius: 999px;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 3px;
+  background: var(--gold-dim);
+  border-radius: 999px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  margin-top: -6px;
+  background: linear-gradient(160deg, var(--gold-bright), var(--gold));
+  border: var(--hairline) solid var(--gold-bright);
+  /* A rotated square: the same diamond the rules and bullets use. */
+  transform: rotate(45deg);
+  box-shadow: var(--glow);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: var(--hairline) solid var(--gold-bright);
+  background: var(--gold);
+  transform: rotate(45deg);
+}
+
+/* -- ornaments ---------------------------------------------------------- */
+
+/* A hairline that fades out at both ends with a diamond at its centre. Used
+ * under any heading that is not inside a titled panel. */
+.rule {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  color: var(--gold);
+}
+
+.rule::before,
+.rule::after {
+  content: "";
+  flex: 1;
+  height: var(--hairline);
+  background: linear-gradient(to right, transparent, var(--gold-dim), transparent);
+}
+
+/* The small rotated square. Marks a selection, or bullets a list item. */
+.diamond {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  rotate: 45deg;
+  background: var(--gold);
+}
+
+.diamond.hollow {
+  background: none;
+  border: var(--hairline) solid var(--gold-dim);
+}
+
+/* -- type --------------------------------------------------------------- */
 
 h1,
 h2,
 h3 {
+  font-family: var(--font-display);
   font-weight: 600;
   margin: 0;
+  letter-spacing: var(--tracking);
+}
+
+.label {
+  font-family: var(--font-ui);
+  font-size: var(--font-size-small);
+  color: var(--ink-dim);
+  letter-spacing: var(--tracking);
+}
+
+/* -- scrollbars ---------------------------------------------------------
+ * A default scrollbar is the fastest way to make a game look like a form. */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-dim) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--gold-dim);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: none;
 }
 
 ::selection {
-  background: var(--accent-soft);
+  background: var(--gold-dim);
   color: var(--ink);
 }

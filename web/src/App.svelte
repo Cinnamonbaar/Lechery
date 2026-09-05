@@ -78,23 +78,21 @@
   // a wide screen shows both, and remembers which the player had open.
   function toggleLeft() {
     leftOpen = !leftOpen;
-    if (!wide && leftOpen) rightOpen = false;
     if (wide) settings.set("wideLeftOpen", leftOpen);
   }
 
   function toggleRight() {
     rightOpen = !rightOpen;
-    if (!wide && rightOpen) leftOpen = false;
     if (wide) settings.set("wideRightOpen", rightOpen);
   }
 
   function startCreation() {
     screen = "creation";
-    // A phone has no room for a bar over creation; start the game with the
-    // world in view and let the player open what they want.
+    // On a phone the log is the strip under the world, not a drawer, so it
+    // starts open; the paperdoll would cover the world, so it does not.
     if (!wide) {
       leftOpen = false;
-      rightOpen = false;
+      rightOpen = true;
     }
   }
 

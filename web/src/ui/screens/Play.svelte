@@ -5,6 +5,7 @@
   import Frame from "../Frame.svelte";
   import LogView from "../LogView.svelte";
   import Paperdoll from "../Paperdoll.svelte";
+  import Toasts from "../Toasts.svelte";
   import WorldView from "../WorldView.svelte";
 
   interface Props {
@@ -65,6 +66,7 @@
 
   {#snippet centre()}
     <WorldView {session} {showStick} />
+    <Toasts {entries} />
   {/snippet}
 
   {#snippet right()}
