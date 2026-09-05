@@ -35,22 +35,34 @@ jobs:
 
   mirror:
     runs-on: ubuntu-latest
-    # Skipped silently until the secrets exist, so adding a mirror later is
-    # two secrets and no code change. Set MIRROR_URL to a push URL and
-    # MIRROR_TOKEN to a token that host accepts.
+    # Dormant until MIRROR_ENABLED is set, so adding a mirror later is two
+    # secrets and a variable, with no code change.
     if: vars.MIRROR_ENABLED == 'true'
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Push a mirror
+      - name: Push a full mirror
         env:
           MIRROR_URL: ${{ secrets.MIRROR_URL }}
           MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+          # GitLab accepts "oauth2" as the username for a personal access
+          # token. Other hosts differ, so it is a variable rather than a
+          # hardcoded convention.
+          MIRROR_USER: ${{ vars.MIRROR_USER || 'oauth2' }}
+          SOURCE: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
         run: |
-          if [ -z "$MIRROR_URL" ]; then
-            echo "::warning::MIRROR_ENABLED is set but MIRROR_URL is empty"
+          set -eu
+          if [ -z "$MIRROR_URL" ] || [ -z "$MIRROR_TOKEN" ]; then
+            echo "::warning::MIRROR_ENABLED is set but MIRROR_URL or MIRROR_TOKEN is empty"
             exit 0
           fi
-          git push --mirror "$(echo "$MIRROR_URL" | sed "s#://#://x-access-token:${MIRROR_TOKEN}@#")"
+
+          # A bare mirror clone rather than the workspace checkout: a normal
+          # checkout has only the built branch under refs/heads, so pushing
+          # --mirror from it would quietly back up one branch.
+          git clone --mirror "$SOURCE" source.git
+          cd source.git
+
+          # The URL carries the token, so it is assembled and used without
+          # ever being echoed, and lives only in this step's environment.
+          set +x
+          git push --mirror "https://${MIRROR_USER}:${MIRROR_TOKEN}@${MIRROR_URL#https://}"
+          echo "mirrored to ${MIRROR_URL}"
