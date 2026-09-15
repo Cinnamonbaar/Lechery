@@ -1,0 +1,521 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://assets/ui/creator_theme.tres" id="1_0pd7n"]
+[ext_resource type="Script" path="res://scripts/ui/transformation_ui.gd" id="2_mo62p"]
+
+[node name="TransformationUI" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme = ExtResource("1_0pd7n")
+script = ExtResource("2_mo62p")
+
+[node name="MainPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 0
+anchor_bottom = 1.0
+offset_left = 32.0
+offset_top = 32.0
+offset_right = 472.0
+offset_bottom = -32.0
+
+[node name="MarginContainer" type="MarginContainer" parent="MainPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 22
+
+[node name="VBoxMain" type="VBoxContainer" parent="MainPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="HeaderVBox" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="TitleLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/HeaderVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.96, 0.82, 0.42, 1)
+text = "✦ HERO CREATOR ✦"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/HeaderVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.6, 0.72, 0.9, 1)
+text = "TRANSMUTATION CHAMBER"
+horizontal_alignment = 1
+
+[node name="@HSeparator@2" type="HSeparator" parent="MainPanel/MarginContainer/VBoxMain"]
+layout_mode = 2
+
+[node name="TabBar" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxMain"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BodyTabBtn" type="Button" parent="MainPanel/MarginContainer/VBoxMain/TabBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "🛡️ Body"
+
+[node name="SkinTabBtn" type="Button" parent="MainPanel/MarginContainer/VBoxMain/TabBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "🎨 Skin"
+
+[node name="EyesTabBtn" type="Button" parent="MainPanel/MarginContainer/VBoxMain/TabBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "👁️ Eyes"
+
+[node name="HairTabBtn" type="Button" parent="MainPanel/MarginContainer/VBoxMain/TabBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "✂️ Hair"
+
+[node name="@HSeparator@3" type="HSeparator" parent="MainPanel/MarginContainer/VBoxMain"]
+layout_mode = 2
+
+[node name="PagesContainer" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BodyPage" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="@Label@4" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+text = "● BODY PROPORTIONS"
+
+[node name="@VBoxContainer@7" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="@HBoxContainer@5" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage/@VBoxContainer@7"]
+layout_mode = 2
+
+[node name="@Label@6" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage/@VBoxContainer@7/@HBoxContainer@5"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Shoulder Width"
+
+[node name="ShoulderLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage/@VBoxContainer@7/@HBoxContainer@5"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.95, 0.82, 0.42, 1)
+text = "1.00x"
+
+[node name="ShoulderSlider" type="HSlider" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage/@VBoxContainer@7"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.8
+max_value = 1.35
+step = 0.02
+value = 1.0
+
+[node name="@VBoxContainer@10" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="@HBoxContainer@8" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage/@VBoxContainer@10"]
+layout_mode = 2
+
+[node name="@Label@9" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage/@VBoxContainer@10/@HBoxContainer@8"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Height Scale"
+
+[node name="HeightLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage/@VBoxContainer@10/@HBoxContainer@8"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.95, 0.82, 0.42, 1)
+text = "1.00x"
+
+[node name="HeightSlider" type="HSlider" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage/@VBoxContainer@10"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.75
+max_value = 1.3
+step = 0.02
+value = 1.01
+
+[node name="TipLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/BodyPage"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.65, 0.7, 0.82, 0.8)
+text = "Tip: Base model is calibrated as an androgynous template. Full male & female archetype models can be blended cleanly once sculpted in VRoid."
+autowrap_mode = 3
+
+[node name="SkinPage" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="@Label@11" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/SkinPage"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+text = "● SKIN TONE PALETTE"
+
+[node name="SkinColorsContainer" type="HFlowContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/SkinPage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+
+[node name="EyesPage" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="@Label@12" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+text = "● EYE IRIS COLOR PALETTE"
+
+[node name="EyeColorsContainer" type="HFlowContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+
+[node name="@VBoxContainer@15" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="@HBoxContainer@13" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage/@VBoxContainer@15"]
+layout_mode = 2
+
+[node name="@Label@14" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage/@VBoxContainer@15/@HBoxContainer@13"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Eye Brightness"
+
+[node name="EyeBrightnessLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage/@VBoxContainer@15/@HBoxContainer@13"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.95, 0.82, 0.42, 1)
+text = "1.00x"
+
+[node name="EyeBrightnessSlider" type="HSlider" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage/@VBoxContainer@15"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.2
+max_value = 2.5
+step = 0.05
+value = 1.0
+
+[node name="@VBoxContainer@18" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="@HBoxContainer@16" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage/@VBoxContainer@18"]
+layout_mode = 2
+
+[node name="@Label@17" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage/@VBoxContainer@18/@HBoxContainer@16"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Eye Saturation"
+
+[node name="EyeSaturationLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage/@VBoxContainer@18/@HBoxContainer@16"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.95, 0.82, 0.42, 1)
+text = "1.00x"
+
+[node name="EyeSaturationSlider" type="HSlider" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/EyesPage/@VBoxContainer@18"]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 2.0
+step = 0.05
+value = 1.0
+
+[node name="HairPage" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="@Label@19" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+text = "● HAIRSTYLE SELECTION"
+
+[node name="HairButtonsContainer" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="HairStyleOption" type="OptionButton" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="@Label@25" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+text = "● HAIR COLOR PALETTE"
+
+[node name="HairColorsContainer" type="HFlowContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+
+[node name="@VBoxContainer@28" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="@HBoxContainer@26" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@28"]
+layout_mode = 2
+
+[node name="@Label@27" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@28/@HBoxContainer@26"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Hair Brightness"
+
+[node name="HairBrightnessLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@28/@HBoxContainer@26"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.95, 0.82, 0.42, 1)
+text = "1.00x"
+
+[node name="HairBrightnessSlider" type="HSlider" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@28"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.2
+max_value = 2.5
+step = 0.05
+value = 1.0
+
+[node name="@VBoxContainer@31" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="@HBoxContainer@29" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@31"]
+layout_mode = 2
+
+[node name="@Label@30" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@31/@HBoxContainer@29"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Hair Saturation"
+
+[node name="HairSaturationLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@31/@HBoxContainer@29"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.95, 0.82, 0.42, 1)
+text = "1.00x"
+
+[node name="HairSaturationSlider" type="HSlider" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@31"]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 2.0
+step = 0.05
+value = 1.0
+
+[node name="@Label@32" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+text = "● HAIR POSITION / FIT"
+
+[node name="@VBoxContainer@35" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="@HBoxContainer@33" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@35"]
+layout_mode = 2
+
+[node name="@Label@34" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@35/@HBoxContainer@33"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Hair Depth (Back/Fwd)"
+
+[node name="HairDepthLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@35/@HBoxContainer@33"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.95, 0.82, 0.42, 1)
+text = "0.00x"
+
+[node name="HairDepthSlider" type="HSlider" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@35"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -0.04
+max_value = 0.04
+step = 0.002
+
+[node name="@VBoxContainer@38" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="@HBoxContainer@36" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@38"]
+layout_mode = 2
+
+[node name="@Label@37" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@38/@HBoxContainer@36"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Hair Height (Down/Up)"
+
+[node name="HairHeightLabel" type="Label" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@38/@HBoxContainer@36"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.95, 0.82, 0.42, 1)
+text = "0.00x"
+
+[node name="HairHeightSlider" type="HSlider" parent="MainPanel/MarginContainer/VBoxMain/PagesContainer/HairPage/@VBoxContainer@38"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -0.04
+max_value = 0.04
+step = 0.002
+
+[node name="BottomDock" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -660.0
+offset_top = -84.0
+offset_right = -32.0
+offset_bottom = -28.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="DockMargin" type="MarginContainer" parent="BottomDock"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="DockHBox" type="HBoxContainer" parent="BottomDock/DockMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FocusFaceBtn" type="Button" parent="BottomDock/DockMargin/DockHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "👤 Face"
+
+[node name="FocusTorsoBtn" type="Button" parent="BottomDock/DockMargin/DockHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "👕 Torso"
+
+[node name="FocusFullBtn" type="Button" parent="BottomDock/DockMargin/DockHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "🧍 Full"
+
+[node name="@VSeparator@39" type="VSeparator" parent="BottomDock/DockMargin/DockHBox"]
+layout_mode = 2
+
+[node name="TurntableCheck" type="CheckBox" parent="BottomDock/DockMargin/DockHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "🔄 Spin"
+
+[node name="ResetBtn" type="Button" parent="BottomDock/DockMargin/DockHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "↺ Reset"
+
+[node name="TestWalkBtn" type="Button" parent="BottomDock/DockMargin/DockHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.82, 0.42, 1)
+text = "🎮 Test Walk (TAB)"
+
+[node name="InstructionLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -660.0
+offset_top = -118.0
+offset_right = -32.0
+offset_bottom = -92.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(1, 1, 1, 0.65)
+text = "Left/Right Drag: Orbit | Scroll: Zoom | Middle Drag: Pan | TAB: Test Walk"
+horizontal_alignment = 2
+
+[node name="WalkModeHUD" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -680.0
+offset_top = 28.0
+offset_right = -32.0
+offset_bottom = 86.0
+grow_horizontal = 0
+
+[node name="@MarginContainer@40" type="MarginContainer" parent="WalkModeHUD"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="@HBoxContainer@41" type="HBoxContainer" parent="WalkModeHUD/@MarginContainer@40"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="WalkPromptLabel" type="Label" parent="WalkModeHUD/@MarginContainer@40/@HBoxContainer@41"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.85, 0.92, 1, 1)
+text = "[WASD] Move | [Shift] Sprint | [Space] Jump | [Wheel] 1st/3rd Person"
+
+[node name="ExitWalkBtn" type="Button" parent="WalkModeHUD/@MarginContainer@40/@HBoxContainer@41"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.82, 0.42, 1)
+text = "🛡️ Creator (TAB)"

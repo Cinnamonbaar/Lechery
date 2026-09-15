@@ -1,0 +1,15 @@
+# Godot 4+ cache & internal export
+.godot/
+
+# Tools directory (Godot portable engine)
+tools/
+
+# Temporary / build files
+*.tmp
+*.log
+
+# OS & backup files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.bak

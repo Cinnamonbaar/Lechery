@@ -1,0 +1,16 @@
+Human Basic Motions FREE (Version 2.4)
+=====================================
+Creator: Kevin Iglesias
+Website: https://www.keviniglesias.com
+Itch.io: https://kevdev.itch.io/basic-motions-free
+Contact: support@keviniglesias.com
+
+Asset Overview:
+Humanoid 3D movement and interaction animations.
+Free version includes basic movement animations: idles, walk, run, sprint, jump (begin, falling, landing), and turns.
+Optimized for game engines (Unity, Unreal Engine, Godot, Blender).
+
+License & Usage Terms:
+- Free to download and use in personal, educational, and commercial game development projects.
+- Not generated using generative AI.
+- Credit to Kevin Iglesias (www.keviniglesias.com) is appreciated.
