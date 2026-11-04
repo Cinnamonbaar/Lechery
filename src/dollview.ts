@@ -1,5 +1,5 @@
 /**
- * The doll on screen: a 64x120 canvas scaled up by whole pixels, so the art
+ * The doll on screen: a small canvas scaled up by whole pixels, so the art
  * stays crisp, and a little life on top of it.
  *
  * Sizes spring toward their targets instead of snapping, with a touch of

@@ -25,3 +25,10 @@ good enough to linger in.
 
 Never commit personal information: no real names, email addresses, local
 paths, tokens or keys. Commit as the GitHub noreply identity.
+
+## References before invention
+
+Look for real references and templates before designing something from
+scratch — art technique, UI conventions, writing, game design. Established
+practice usually beats a first guess, and it is cheaper to borrow a proven
+answer than to rediscover it. Say which reference a decision came from.

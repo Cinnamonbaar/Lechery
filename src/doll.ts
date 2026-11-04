@@ -11,7 +11,7 @@
  */
 
 export const W = 64;
-export const H = 120;
+export const H = 132;
 
 export interface Look {
   /** Centimetres. */
@@ -66,7 +66,55 @@ const enum P {
 
 const CLOTH = "#e9e4f2";
 
-export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
+/** 0 is the first, stylised doll; 1 the anatomical canon. See measure(). */
+export const MIX = 0.5;
+
+/**
+ * Two complete sets of measurements, and a blend between them.
+ *
+ * STYLISED is the first doll: a fixed 17-pixel head and a short frame, so
+ * 4.7-6.6 heads tall, with a long torso, short legs and narrow shoulders.
+ *
+ * CANON is measured from the classical figure canons (Loomis and Richer,
+ * via Proko's notes), restated as fractions of height so it holds at any
+ * size: 6.9-7.5 heads, nipples, waist and hips at their landmarks, crotch
+ * at a touch above half, shoulders and hips at measured widths.
+ *
+ * MIX chooses between them -- 0 is the first, 1 the canon -- so the look is
+ * tuned by eye with one number instead of by guessing a dozen.
+ */
+export function measure(look: Pick<Look, "height" | "build">, blend = MIX) {
+  const t = (Math.min(Math.max(look.height, 145), 195) - 145) / 50;
+  const b = look.build;
+  const stylised = {
+    fh: 80 + t * 32, u: 17,
+    shoulder: 20, chest: 0.16, waist: 0.34, hip: 0.46, crotch: 0.54, knee: 0.77,
+    sw: 8.4 - b * 1.6, ww: 5.8 - b * 1.7, hw: 6 + b * 3.8,
+    neck: 2, armW: 3.2, foreW: 2, kneeW: 1.4, calf: 1.6, ankle: 1.15, hand: 2,
+  };
+  const cfh = 104 + t * 21, cu = cfh / (6.9 + t * 0.6);
+  const canon = {
+    fh: cfh, u: cu,
+    shoulder: cfh * 0.175,
+    // As fractions of the body below the chin, to blend with the first set.
+    chest: (cfh * 0.26 - cu) / (cfh - cu), waist: (cfh * 0.37 - cu) / (cfh - cu),
+    hip: (cfh * 0.455 - cu) / (cfh - cu), crotch: (cfh * 0.49 - cu) / (cfh - cu),
+    knee: (cfh * 0.73 - cu) / (cfh - cu),
+    sw: cfh * (0.122 - b * 0.017), ww: cfh * (0.08 - b * 0.02), hw: cfh * (0.085 + b * 0.025),
+    neck: cfh * 0.028, armW: cfh * 0.034, foreW: cfh * 0.028,
+    kneeW: cfh * 0.032, calf: cfh * 0.036, ankle: cfh * 0.02, hand: cfh * 0.045,
+  };
+  type Body = typeof canon;
+  const m = {} as Body;
+  for (const key in canon) {
+    const k = key as keyof Body;
+    m[k] = stylised[k] + (canon[k] - stylised[k]) * blend;
+  }
+
+  return m;
+}
+
+export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, blend = MIX): void {
   const ids = new Uint8Array(W * H);
   const put = (x: number, y: number, id: number) => {
     if (x >= 0 && x < W && y >= 0 && y < H) ids[y * W + x] = id;
@@ -103,49 +151,72 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
 
   const cx = W / 2;
   const ground = H - 3;
-  const b = look.build;
-  const fh = 80 + ((Math.min(Math.max(look.height, 145), 195) - 145) / 50) * 32;
+
+  // -- proportions: see measure() ----------------------------------------
+  const m = measure(look, blend);
+  const fh = m.fh, u = m.u;
+  const k = u / 17; // scale for features drawn in head-sized pixels
   const top = ground - fh;
-  const hh = 17;
-  const headY = top + hh / 2;
-  const chin = top + hh;
+  const headY = top + u / 2;
+  const chin = top + u;
   const L = ground - chin;
-  const shoulderY = chin + 3;
-  const chestY = chin + L * 0.16;
-  const waistY = chin + L * 0.34;
-  const hipY = chin + L * 0.46;
-  const crotchY = chin + L * 0.54;
-  const kneeY = chin + L * 0.77;
-  const sw = 8.4 - b * 1.6;
-  const ww = 5.8 - b * 1.7;
-  const hw = 6 + b * 3.8;
+  const shoulderY = top + m.shoulder;
+  const chestY = chin + L * m.chest;
+  const waistY = chin + L * m.waist;
+  const hipY = chin + L * m.hip;
+  const crotchY = chin + L * m.crotch;
+  const kneeY = chin + L * m.knee;
+  const { sw, ww, hw, neck, armW, foreW } = m;
 
   // -- behind the body ---------------------------------------------------
   const style = look.style;
-  if (style === 1) poly([[cx - 9, headY - 3], [cx + 9, headY - 3], [cx + 9.5, chin + 1], [cx - 9.5, chin + 1]], P.HairBack);
-  if (style === 2) poly([[cx - 9, headY - 3], [cx + 9, headY - 3], [cx + 10.5, chestY + 9], [cx + 6, chestY + 11], [cx, chestY + 9], [cx - 6, chestY + 11], [cx - 10.5, chestY + 9]], P.HairBack);
-  if (style === 3) ellipse(cx + 7, headY + 9, 3.4, 9, P.HairBack);
-  if (style === 4) for (const s of [-1, 1]) poly([[cx + s * 7, headY - 6], [cx + s * 12, headY - 2], [cx + s * 12.5, chestY + 7], [cx + s * 10, chestY + 10], [cx + s * 8.5, headY + 2]], P.HairBack);
-  ellipse(cx, headY - 0.5, 8.6, 8.8, P.HairBack);
+  const hx = 9 * k;
+  if (style === 1) poly([[cx - hx, headY - 3], [cx + hx, headY - 3], [cx + hx + 0.5, chin + 1], [cx - hx - 0.5, chin + 1]], P.HairBack);
+  if (style === 2) poly([[cx - hx, headY - 3], [cx + hx, headY - 3], [cx + hx + 1.5, chestY + 9], [cx + 6, chestY + 11], [cx, chestY + 9], [cx - 6, chestY + 11], [cx - hx - 1.5, chestY + 9]], P.HairBack);
+  if (style === 3) ellipse(cx + 7 * k, headY + 9, 3.4, 9, P.HairBack);
+  if (style === 4) for (const s of [-1, 1]) poly([[cx + s * 7 * k, headY - 6], [cx + s * 12 * k, headY - 2], [cx + s * 12.5 * k, chestY + 7], [cx + s * 10 * k, chestY + 10], [cx + s * 8.5 * k, headY + 2]], P.HairBack);
+  ellipse(cx, headY - 0.5, 8.6 * k, 8.8 * k, P.HairBack);
 
   // -- body ----------------------------------------------------------------
-  const thigh = hw * 0.62 + 0.6;
-  both([[hw, hipY], [0.4, crotchY], [1.1, kneeY], [1.4, ground - 1], [3.7, ground - 1], [4.3, kneeY + 6], [3.9, kneeY], [thigh + 0.4, (hipY + kneeY) / 2]], P.LegL, P.LegR);
-  ellipse(cx - 3, ground - 0.8, 2.6, 1.6, P.LegL);
-  ellipse(cx + 3, ground - 0.8, 2.6, 1.6, P.LegR);
+  // Legs: the thigh fills the hip, tapering to a knee, a calf with some
+  // shape below it, and a slim ankle.
+  const knee = m.kneeW, calf = m.calf, ankle = m.ankle;
+  const legX = hw * 0.5; // centre line of each leg at the knee
+  both([[hw, hipY], [0.4, crotchY], [legX - knee + 0.5, kneeY], [legX - ankle * 0.6, ground - 1], [legX + ankle * 1.4, ground - 1], [legX + calf, kneeY + (ground - kneeY) * 0.3], [legX + knee, kneeY], [hw * 0.92, (hipY + kneeY) / 2]], P.LegL, P.LegR);
+  ellipse(cx - legX, ground - 0.8, ankle + 1.6, 1.6, P.LegL);
+  ellipse(cx + legX, ground - 0.8, ankle + 1.6, 1.6, P.LegR);
 
-  const side = [[sw, shoulderY + 1], [sw - 0.8, chestY + 1], [ww, waistY], [hw, hipY], [hw - 0.6, crotchY - 1], [0.5, crotchY + 0.5]];
-  poly([[cx, shoulderY - 1], ...side.map(([x, y]) => [cx + x!, y!]), ...side.reverse().map(([x, y]) => [cx - x!, y!])], P.Torso);
+  // The trapezius slopes from the neck to the shoulder rather than running
+  // flat: a level line there is what reads as a coat hanger.
+  const side = [[neck + (sw - neck) * 0.45, shoulderY - 0.6], [sw - armW * 0.5, shoulderY + 1.6], [sw - armW * 0.9, chestY + 1], [ww, waistY], [hw, hipY], [hw - 0.6, crotchY - 1], [0.5, crotchY + 0.5]];
+  poly([[cx - neck, shoulderY - 2.4], [cx + neck, shoulderY - 2.4], ...side.map(([x, y]) => [cx + x!, y!]), ...side.reverse().map(([x, y]) => [cx - x!, y!])], P.Torso);
 
-  poly([[cx - 2, chin - 2], [cx + 2, chin - 2], [cx + 2.2, shoulderY + 0.5], [cx - 2.2, shoulderY + 0.5]], P.Neck);
+  poly([[cx - neck, chin - 2], [cx + neck, chin - 2], [cx + neck + 0.3, shoulderY + 0.5], [cx - neck - 0.3, shoulderY + 0.5]], P.Neck);
 
-  const wrist = hw + 2.4;
-  both([[sw + 0.6, shoulderY], [sw - 2.6, shoulderY + 2], [wrist - 2, crotchY], [wrist, crotchY], [sw + 1.2, shoulderY + 4]], P.ArmL, P.ArmR);
-  ellipse(cx - wrist + 1, crotchY + 1.6, 1.6, 2, P.ArmL);
-  ellipse(cx + wrist - 1, crotchY + 1.6, 1.6, 2, P.ArmR);
+  // Arms: elbow at the waist, wrist at the crotch, fingertips at mid-thigh.
+  // The arm hangs from the shoulder joint and angles out only as far as it
+  // must to clear the waist and then the hip -- the "carrying angle" real
+  // arms have, and why a curvy figure's hands sit further out.
+  const shoulderX = sw - armW * 0.5;
+  const elbowX = Math.max(shoulderX, ww + armW * 0.5 + 0.4);
+  const wristX = Math.max(elbowX, hw + foreW * 0.5 + 0.4);
+  const limb = (x0: number, y0: number, w0: number, x1: number, y1: number, w1: number) => {
+    both([[x0 - w0 / 2, y0], [x0 + w0 / 2, y0], [x1 + w1 / 2, y1], [x1 - w1 / 2, y1]], P.ArmL, P.ArmR);
+  };
+  limb(shoulderX, shoulderY + armW * 0.6, armW, elbowX, waistY, armW * 0.85);
+  limb(elbowX, waistY, armW * 0.85, wristX, crotchY, foreW * 0.75);
+  // A round deltoid caps the shoulder.
+  ellipse(cx - shoulderX, shoulderY + armW * 0.85, armW * 0.6, armW * 0.7, P.ArmL);
+  ellipse(cx + shoulderX, shoulderY + armW * 0.85, armW * 0.6, armW * 0.7, P.ArmR);
+  const hand = m.hand;
+  ellipse(cx - wristX, crotchY + hand * 0.9, foreW * 0.55, hand, P.ArmL);
+  ellipse(cx + wristX, crotchY + hand * 0.9, foreW * 0.55, hand, P.ArmR);
 
-  const by = chestY + 1.5 + look.bust * 0.36 - pose.breath;
-  const r = 1.4 + look.bust * 0.56;
+  // The bust sits on the nipple line and scales with the frame, so a cup
+  // size reads the same on a short character as on a tall one.
+  const f = fh / 110;
+  const r = (1.4 + look.bust * 0.56) * f;
+  const by = chestY - 0.5 + look.bust * 0.36 * f - pose.breath;
   const bx = Math.min(1.1 + r * 0.86, sw - r * 0.45);
   if (look.bust > 0.3) {
     ellipse(cx - bx, by, r, r * 0.95, P.BustL);
@@ -155,18 +226,19 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
     ellipse(cx + bx, by, r + 0.35, r * 0.95 + 0.35, P.BraR, cup(1));
   }
 
-  poly([[cx - hw + 0.4, hipY + 0.5], [cx + hw - 0.4, hipY + 0.5], [cx + hw - 1.4, crotchY - 1], [cx + 1.4, crotchY + 2], [cx - 1.4, crotchY + 2], [cx - hw + 1.4, crotchY - 1]], P.Briefs);
-  if (look.endowment > 0.3) ellipse(cx, crotchY - 0.2, 1.3 + look.endowment * 0.13, 1.5 + look.endowment * 0.2, P.Bulge);
+  poly([[cx - hw + 0.4, hipY + 0.5], [cx + hw - 0.4, hipY + 0.5], [cx + hw - 1.4, crotchY - 1], [cx + 1.6, crotchY + 2], [cx - 1.6, crotchY + 2], [cx - hw + 1.4, crotchY - 1]], P.Briefs);
+  if (look.endowment > 0.3) ellipse(cx, crotchY - 0.2, (1.3 + look.endowment * 0.13) * f, (1.5 + look.endowment * 0.2) * f, P.Bulge);
 
   // -- head ----------------------------------------------------------------
-  ellipse(cx, headY, 7.4, 8.2, P.Head);
-  poly([[cx - 7, headY + 1], [cx + 7, headY + 1], [cx + 2.6, chin], [cx - 2.6, chin]], P.Head);
+  ellipse(cx, headY, 7.4 * k, 8.2 * k, P.Head);
+  poly([[cx - 7 * k, headY + 1], [cx + 7 * k, headY + 1], [cx + 2.6 * k, chin], [cx - 2.6 * k, chin]], P.Head);
 
   const fringe = (x: number, y: number) => y < headY - 2 || (y < headY + 1 && Math.abs(((x - cx + 12) % 4) - 2) > 0.6 + (y - headY + 2) * 0.5);
-  ellipse(cx, headY - 1.6, 8.4, 8, P.HairFront, fringe);
+  ellipse(cx, headY - 1.6, 8.4 * k, 8 * k, P.HairFront, fringe);
   const lock = style === 0 ? headY + 3 : style === 2 ? shoulderY + 4 : chin;
-  poly([[cx - 8.6, headY - 3], [cx - 6.6, headY - 3], [cx - 7, lock], [cx - 8.4, lock - 1]], P.HairFront);
-  poly([[cx + 8.6, headY - 3], [cx + 6.6, headY - 3], [cx + 7, lock], [cx + 8.4, lock - 1]], P.HairFront);
+  const lo = 8.6 * k, li = 6.6 * k;
+  poly([[cx - lo, headY - 3], [cx - li, headY - 3], [cx - li - 0.4, lock], [cx - lo + 0.2, lock - 1]], P.HairFront);
+  poly([[cx + lo, headY - 3], [cx + li, headY - 3], [cx + li + 0.4, lock], [cx + lo - 0.2, lock - 1]], P.HairFront);
 
   // -- colour --------------------------------------------------------------
   const skin = ramp(look.skin), hair = ramp(look.hair), cloth = ramp(CLOTH);
@@ -186,8 +258,14 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
         const m = material(id);
         set(i, at(x + 1, y) !== id || at(x, y + 1) !== id ? m[1] : at(x - 1, y) !== id || at(x, y - 1) !== id ? m[3] : m[2]);
       } else {
-        const n = at(x + 1, y) || at(x - 1, y) || at(x, y + 1) || at(x, y - 1);
-        if (n) set(i, material(n)[0]);
+        // Selective outline: the light comes from the top left, so where the
+        // figure lies below or to the right of this pixel the edge is lit
+        // and takes the part's own shadow tone; on the far sides it takes
+        // the darkest. A flat black line all round is what makes pixel art
+        // look like a sticker.
+        const lit = at(x + 1, y) || at(x, y + 1);
+        const n = lit || at(x - 1, y) || at(x, y - 1);
+        if (n) set(i, material(n)[lit ? 1 : 0]);
       }
     }
 
