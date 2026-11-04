@@ -10,8 +10,18 @@
  * all, because nothing here is a fixed sprite.
  */
 
-export const W = 64;
-export const H = 132;
+/**
+ * The art is laid out in base units on a 64x132 frame, and drawn R times
+ * finer. Proportions live in base units, so changing R sharpens the doll
+ * without moving a single landmark -- the face included, which is built
+ * from shapes like the body rather than placed pixel by pixel.
+ */
+export const R = 4;
+const BW = 64, BH = 132;
+export const W = BW * R;
+const OUTLINE = Math.max(1, R / 2);
+const SHADE = R, LIGHT = Math.max(1, R / 2);
+export const H = BH * R;
 
 export interface Look {
   /** Centimetres. */
@@ -116,32 +126,48 @@ export function measure(look: Pick<Look, "height" | "build">, blend = MIX) {
 
 export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, blend = MIX): void {
   const ids = new Uint8Array(W * H);
+  // The figure's bounding box, so shading skips the empty frame around it.
+  let minX = W, maxX = 0, minY = H, maxY = 0;
   const put = (x: number, y: number, id: number) => {
-    if (x >= 0 && x < W && y >= 0 && y < H) ids[y * W + x] = id;
+    if (x < 0 || x >= W || y < 0 || y >= H) return;
+    ids[y * W + x] = id;
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
   };
+  // Shapes take base units and rasterise at full resolution. `keep` gets a
+  // base-unit position whose +0.5 is the pixel centre, as it always did.
   const ellipse = (
     cx: number, cy: number, rx: number, ry: number, id: number,
     keep: (x: number, y: number) => boolean = () => true,
   ) => {
-    for (let y = Math.floor(cy - ry); y <= cy + ry; y++)
-      for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
-        const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry;
-        if (dx * dx + dy * dy <= 1 && keep(x, y)) put(x, y, id);
+    for (let Y = Math.floor((cy - ry) * R); Y <= (cy + ry) * R; Y++)
+      for (let X = Math.floor((cx - rx) * R); X <= (cx + rx) * R; X++) {
+        const x = (X + 0.5) / R, y = (Y + 0.5) / R;
+        const dx = (x - cx) / rx, dy = (y - cy) / ry;
+        if (dx * dx + dy * dy <= 1 && keep(x - 0.5, y - 0.5)) put(X, Y, id);
       }
   };
+  // Scanline fill: for each row, find where the edges cross the pixel
+  // centres and fill between pairs of crossings -- one sum per row per edge
+  // rather than a test per pixel, which at 4x is the difference between a
+  // smooth slider and a stuttering one.
+  const crossings: number[] = [];
   const poly = (pts: number[][], id: number) => {
-    const ys = pts.map((p) => p[1]!), xs = pts.map((p) => p[0]!);
-    for (let y = Math.floor(Math.min(...ys)); y <= Math.max(...ys); y++)
-      for (let x = Math.floor(Math.min(...xs)); x <= Math.max(...xs); x++) {
-        const px = x + 0.5, py = y + 0.5;
-        let inside = false;
-        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-          const [xi, yi] = pts[i]!, [xj, yj] = pts[j]!;
-          if (yi! > py !== yj! > py && px < ((xj! - xi!) * (py - yi!)) / (yj! - yi!) + xi!)
-            inside = !inside;
-        }
-        if (inside) put(x, y, id);
+    let y0 = Infinity, y1 = -Infinity;
+    for (const p of pts) { y0 = Math.min(y0, p[1]!); y1 = Math.max(y1, p[1]!); }
+    for (let Y = Math.floor(y0 * R); Y <= y1 * R; Y++) {
+      const py = (Y + 0.5) / R;
+      crossings.length = 0;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const a = pts[i]!, b = pts[j]!;
+        if (a[1]! > py !== b[1]! > py)
+          crossings.push(((b[0]! - a[0]!) * (py - a[1]!)) / (b[1]! - a[1]!) + a[0]!);
       }
+      crossings.sort((p, q) => p - q);
+      for (let c = 0; c + 1 < crossings.length; c += 2)
+        // Pixel centres strictly inside the span, matching the old test.
+        for (let X = Math.ceil(crossings[c]! * R - 0.5); X + 0.5 < crossings[c + 1]! * R; X++) put(X, Y, id);
+    }
   };
   // A shape and its mirror image about the centre line.
   const both = (pts: number[][], left: number, right: number) => {
@@ -149,8 +175,8 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, blend = MIX
     poly(pts.map(([x, y]) => [cx + x!, y!]), right);
   };
 
-  const cx = W / 2;
-  const ground = H - 3;
+  const cx = BW / 2;
+  const ground = BH - 3;
 
   // -- proportions: see measure() ----------------------------------------
   const m = measure(look, blend);
@@ -233,7 +259,19 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, blend = MIX
   ellipse(cx, headY, 7.4 * k, 8.2 * k, P.Head);
   poly([[cx - 7 * k, headY + 1], [cx + 7 * k, headY + 1], [cx + 2.6 * k, chin], [cx - 2.6 * k, chin]], P.Head);
 
-  const fringe = (x: number, y: number) => y < headY - 2 || (y < headY + 1 && Math.abs(((x - cx + 12) % 4) - 2) > 0.6 + (y - headY + 2) * 0.5);
+  // Bangs: the cap covers the crown, and below it the hair falls in pointed
+  // strands across the forehead, each one ending in a tip at brow level.
+  // Strand lengths vary by a fixed pattern, so the fringe looks cut rather
+  // than stamped -- but the same every time it is drawn.
+  const strand = 2.6 * k;
+  const LENGTHS = [0.4, 1.4, 0.2, 1.1, 1.6, 0.5, 1.2, 0.1];
+  const fringe = (x: number, y: number) => {
+    if (y < headY - 3) return true;
+    const along = (x + 0.5 - cx) / strand + 0.5;
+    const phase = ((along % 1) + 1) % 1;
+    const n = LENGTHS[((Math.floor(along) % 8) + 8) % 8]!;
+    return y + 0.5 < headY - 0.6 + n - Math.abs(phase - 0.5) * 2 * 3;
+  };
   ellipse(cx, headY - 1.6, 8.4 * k, 8 * k, P.HairFront, fringe);
   const lock = style === 0 ? headY + 3 : style === 2 ? shoulderY + 4 : chin;
   const lo = 8.6 * k, li = 6.6 * k;
@@ -251,47 +289,113 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, blend = MIX
     out[i * 4] = c[0]; out[i * 4 + 1] = c[1]; out[i * 4 + 2] = c[2]; out[i * 4 + 3] = 255;
   };
   out.fill(0);
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
+  for (let y = Math.max(0, minY - OUTLINE); y <= Math.min(H - 1, maxY + OUTLINE); y++)
+    for (let x = Math.max(0, minX - OUTLINE); x <= Math.min(W - 1, maxX + OUTLINE); x++) {
       const i = y * W + x, id = ids[i]!;
       if (id) {
+        // Shadow and highlight bands keep their width in base units, so the
+        // shading reads the same at any resolution.
         const m = material(id);
-        set(i, at(x + 1, y) !== id || at(x, y + 1) !== id ? m[1] : at(x - 1, y) !== id || at(x, y - 1) !== id ? m[3] : m[2]);
+        let tone = m[2];
+        for (let d = 1; d <= SHADE; d++)
+          if (at(x + d, y) !== id || at(x, y + d) !== id) { tone = m[1]; break; }
+        if (tone === m[2])
+          for (let d = 1; d <= LIGHT; d++)
+            if (at(x - d, y) !== id || at(x, y - d) !== id) { tone = m[3]; break; }
+        set(i, tone);
       } else {
         // Selective outline: the light comes from the top left, so where the
         // figure lies below or to the right of this pixel the edge is lit
         // and takes the part's own shadow tone; on the far sides it takes
         // the darkest. A flat black line all round is what makes pixel art
         // look like a sticker.
-        const lit = at(x + 1, y) || at(x, y + 1);
-        const n = lit || at(x - 1, y) || at(x, y - 1);
-        if (n) set(i, material(n)[lit ? 1 : 0]);
+        // At higher resolution the outline thickens with it, so it stays
+        // about the weight it was at the original size.
+        for (let d = 1; d <= OUTLINE; d++) {
+          const lit = at(x + d, y) || at(x, y + d);
+          const n = lit || at(x - d, y) || at(x, y - d);
+          if (n) { set(i, material(n)[lit ? 1 : 0]); break; }
+        }
       }
     }
 
-  // -- face, drawn straight in, unshaded -------------------------------------
-  const px = (x: number, y: number, c: Rgb) => set(Math.round(y) * W + Math.round(x), c);
+  // -- face, drawn over the shading at full resolution ----------------------
+  // Shapes in base units, like the body, so the face sharpens with R instead
+  // of being redrawn for it. Each eye: a white opening, an iris in three
+  // bands with a pupil, a heavy upper lid with a flick at the outer corner,
+  // a soft lower lash, and two highlights on the side the light comes from.
+  // Blush is hatched in short diagonal strokes, as anime draws it.
+  const paint = (x0: number, y0: number, x1: number, y1: number, pick: (x: number, y: number) => Rgb | null) => {
+    for (let Y = Math.floor(y0 * R); Y < y1 * R; Y++)
+      for (let X = Math.floor(x0 * R); X < x1 * R; X++) {
+        if (X < 0 || X >= W || Y < 0 || Y >= H) continue;
+        const c = pick((X + 0.5) / R, (Y + 0.5) / R);
+        if (c) set(Y * W + X, c);
+      }
+  };
+  const inside = (x: number, y: number, ex: number, ey: number, rx: number, ry: number) =>
+    ((x - ex) / rx) ** 2 + ((y - ey) / ry) ** 2 <= 1;
+
   const iris = ramp(look.eyes);
-  const ey = Math.round(headY + 1);
-  for (const s of [-1, 1]) {
-    const outer = cx + s * 5 - (s > 0 ? 1 : 0);
-    const inner = outer - s * 2;
-    const cols = [outer, outer - s, inner];
+  const deep = mix(iris[1], INK, 0.35);
+  const pupil = mix(iris[0], INK, 0.45);
+  const white = hex("#f6f2f8"), shade = hex("#d6cfe0"), shine = hex("#ffffff");
+  const lash = mix(INK, skin[1], 0.45);
+  const brow = mix(hair[1], INK, 0.25);
+  const blush = mix(skin[2], hex("#ff6f86"), 0.45);
+  const ey = headY + 1.5;
+  const erx = 1.55 * k, ery = 1.9 * k;
+
+  for (const side of [-1, 1]) {
+    const ex = cx + side * 3.8 * k;
+    const outer = side; // +1: the outer corner is to the right
+    // Brow: a thin arc, dipping toward the outer end.
+    paint(ex - 2.2 * k, ey - 4.5, ex + 2.2 * k, ey - 2, (x, y) => {
+      const u = (x - ex) / (2 * k);
+      const arc = ey - 3.6 - (1 - u * u) * 0.5 + Math.max(0, u * outer) * 0.6;
+      return Math.abs(u) < 1 && Math.abs(y - arc) < 0.22 ? brow : null;
+    });
     if (pose.blink) {
-      for (const x of cols) px(x, ey + 1, skin[0]);
+      paint(ex - 2 * k, ey - 1, ex + 2 * k, ey + 2, (x, y) => {
+        const u = (x - ex) / (1.7 * k);
+        return Math.abs(u) < 1 && Math.abs(y - (ey + 0.5 + u * u * 0.5)) < 0.28 ? INK : null;
+      });
       continue;
     }
-    for (const x of cols) px(x, ey - 1, INK);
-    px(outer + s, ey - 1, INK);
-    px(outer, ey, hex("#f4f0f6"));
-    px(outer, ey + 1, hex("#f4f0f6"));
-    px(outer - s, ey, iris[1]); px(inner, ey, iris[1]);
-    px(outer - s, ey + 1, iris[2]); px(inner, ey + 1, iris[2]);
-    px(outer - s, ey + 2, iris[3]); px(inner, ey + 2, iris[3]);
-    px(outer - s, ey, hex("#ffffff"));
-    px(outer, ey - 3, hair[1]); px(outer - s, ey - 3, hair[1]);
-    px(outer - s * 0.4, ey + 4, mix(skin[2], hex("#ff7a8a"), 0.35));
+    paint(ex - 2.4 * k, ey - 2.8, ex + 2.4 * k, ey + 2.6, (x, y) => {
+      const open = inside(x, y, ex, ey, erx, ery);
+      // The upper lid: a thick band hugging the top of the opening, with a
+      // flick out past the outer corner.
+      const lid = inside(x, y, ex, ey - 0.15, erx + 0.35, ery + 0.25) && y < ey - ery * 0.45;
+      const flick = (x - ex) * outer > erx * 0.6 && (x - ex) * outer < erx + 0.9 &&
+        Math.abs(y - (ey - ery * 0.55 - ((x - ex) * outer - erx * 0.6) * 0.35)) < 0.3;
+      if (lid || flick) return INK;
+      if (!open) {
+        // Lower lash, under the outer half only.
+        const below = inside(x, y, ex, ey, erx, ery + 0.3) && y > ey + ery * 0.5;
+        return below && (x - ex) * outer > -0.2 ? lash : null;
+      }
+      const ix = ex - side * 0.05, iy = ey + 0.15;
+      if (inside(x, y, ex - 0.55 * k, ey - 0.45, 0.42 * k, 0.42 * k)) return shine;
+      if (inside(x, y, ex + 0.55 * k, ey + 0.85, 0.22 * k, 0.22 * k)) return shine;
+      if (inside(x, y, ix, iy, 1.15 * k, ery * 0.86)) {
+        if (inside(x, y, ix, iy + 0.1, 0.45 * k, 0.8)) return pupil;
+        const v = (y - (iy - ery)) / (ery * 2);
+        return v < 0.35 ? deep : v < 0.72 ? iris[2] : iris[3];
+      }
+      return y < ey - ery * 0.2 ? shade : white;
+    });
+    // Blush: three short diagonal strokes on the cheek.
+    paint(ex - 2 * k, ey + 2.2, ex + 2 * k, ey + 3.6, (x, y) => {
+      const d = ((x - ex + 2 * k) - (ey + 3.4 - y)) / (1.15 * k);
+      return Math.abs(d - Math.round(d)) < 0.12 && Math.round(d) >= 1 && Math.round(d) <= 3 ? blush : null;
+    });
   }
-  px(cx - 0.5, chin - 3, mix(skin[1], hex("#b03050"), 0.4));
-  px(cx + 0.5, chin - 3, mix(skin[1], hex("#b03050"), 0.4));
+
+  // Nose: a small shadow on the far side from the light. Mouth: a short,
+  // soft line, darker at its centre.
+  paint(cx + 0.1, ey + 3.1, cx + 0.45, ey + 3.45, () => skin[1]);
+  const my = chin - 2.4;
+  const lip = mix(skin[1], hex("#b03050"), 0.45), corner = mix(skin[1], hex("#b03050"), 0.2);
+  paint(cx - 0.75, my - 0.14, cx + 0.75, my + 0.14, (x) => (Math.abs(x - cx) < 0.35 ? lip : corner));
 }
