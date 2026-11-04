@@ -61,6 +61,42 @@ the one measured here (Anime Art Academy) was judged by the owner to have
 weird proportions. Body references should be professional work — official
 game art, studio model sheets, published artbooks, or art the owner picks.
 
+**Body: the owner's chosen references, measured.** Two anime body
+sheets the owner judged good: a female/male comparison with joint
+construction, and a four-figure sheet on a measuring grid — three female,
+the fourth male (by measurement: widest shoulders, barely-narrowing waist,
+hips narrower than shoulders). Silhouettes were measured row by row from
+the grid sheet. Fractions of total height; widths are full widths:
+
+| | Fig 2 (F) | Fig 3 (F, curviest) | Fig 4 (M) | Ours (before) |
+|---|---|---|---|---|
+| head height | 0.137 | 0.137 | 0.137 | 0.156 |
+| head width | 0.11 | 0.11 | 0.11 | 0.136 |
+| neck, narrowest | 0.041 | 0.042 | 0.041 | 0.05 |
+| shoulders, across deltoids | 0.207 | 0.193 | 0.220 | 0.196 |
+| armpit | ~0.29 | ~0.30 | ~0.30 | — |
+| waist, narrowest | 0.108 | 0.102 | 0.120 | 0.124 |
+| hips, widest (at ~0.47) | 0.179 | 0.180 | 0.172 | 0.18 |
+| crotch | 0.51 | 0.51 | 0.51 | 0.525 |
+| each thigh, top | 0.08 | 0.08 | 0.08 | 0.087 |
+| knee, narrowest | 0.70 | 0.70 | 0.70 | 0.745 |
+| calf, widest (at ~0.75) | 0.054 | 0.058 | 0.062 | 0.048 |
+| ankle | 0.029 | 0.031 | 0.032 | 0.032 |
+| upper arm | 0.038 | 0.038 | 0.038 | 0.034 |
+| wrist | 0.017 | 0.018 | 0.016 | 0.019 |
+
+About 7.3 heads tall. Shape language matters more than any one number:
+every contour is a continuous curve — deltoids round, the waist curves in,
+hips flow into thighs, thighs taper to a defined knee, calves swell, ankles
+slim. The arms angle outward from the shoulder; the legs angle slightly
+outward toward the feet, thighs nearly touching at the top. The male
+figure tapers from the lats in a V instead of having a waist. Lines are
+thin.
+
+Plan: draw the body as smooth curves through these measured profiles —
+build blending from the female figures to the male one — instead of
+straight-segment polygons.
+
 ## 1. Shading — the biggest flaw: we pillow-shade
 
 **What the references say.** *Pillow shading* is the classic pixel-art
@@ -257,8 +293,8 @@ Sources: [sprite-ai — anime pixel art](https://www.sprite-ai.art/blog/anime-pi
 2. **Face** — the measured Slynyrd proportions: narrower tapered jaw and
    pointed chin, eyes raised to the midline and set further apart, neck
    leaving the jaw.
-3. **Body** — waiting on professional anime body references; rounded
-   outlines through the landmarks are safe to do regardless.
+3. **Body** — smooth curves through the measured profiles of the owner's
+   references; head smaller and narrower, waist slimmer, knees higher.
 4. **Hair** — flow from a cowlick, clumps split by strand lines, jagged
    tips, shine patches on the dome, standing well off the skull, a cast
    shadow on the face.
