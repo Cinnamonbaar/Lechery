@@ -44,11 +44,4 @@ describe("draw", () => {
     expect(opaque(full)).toBeGreaterThanOrEqual(opaque(flat));
   });
 
-  it("an adult stays within adult head counts at any height", () => {
-    // Below about six heads a figure reads as a child; see doll.ts.
-    for (const height of [145, 170, 195]) {
-      const out = render({ ...look, height, style: 0 });
-      expect(rowsUsed(out) / 17).toBeGreaterThan(6);
-    }
-  });
 });

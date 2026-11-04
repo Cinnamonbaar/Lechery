@@ -66,7 +66,55 @@ const enum P {
 
 const CLOTH = "#e9e4f2";
 
-export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
+/** 0 is the first, stylised doll; 1 the anatomical canon. See measure(). */
+export const MIX = 0.5;
+
+/**
+ * Two complete sets of measurements, and a blend between them.
+ *
+ * STYLISED is the first doll: a fixed 17-pixel head and a short frame, so
+ * 4.7-6.6 heads tall, with a long torso, short legs and narrow shoulders.
+ *
+ * CANON is measured from the classical figure canons (Loomis and Richer,
+ * via Proko's notes), restated as fractions of height so it holds at any
+ * size: 6.9-7.5 heads, nipples, waist and hips at their landmarks, crotch
+ * at a touch above half, shoulders and hips at measured widths.
+ *
+ * MIX chooses between them -- 0 is the first, 1 the canon -- so the look is
+ * tuned by eye with one number instead of by guessing a dozen.
+ */
+export function measure(look: Pick<Look, "height" | "build">, blend = MIX) {
+  const t = (Math.min(Math.max(look.height, 145), 195) - 145) / 50;
+  const b = look.build;
+  const stylised = {
+    fh: 80 + t * 32, u: 17,
+    shoulder: 20, chest: 0.16, waist: 0.34, hip: 0.46, crotch: 0.54, knee: 0.77,
+    sw: 8.4 - b * 1.6, ww: 5.8 - b * 1.7, hw: 6 + b * 3.8,
+    neck: 2, armW: 3.2, foreW: 2, kneeW: 1.4, calf: 1.6, ankle: 1.15, hand: 2,
+  };
+  const cfh = 104 + t * 21, cu = cfh / (6.9 + t * 0.6);
+  const canon = {
+    fh: cfh, u: cu,
+    shoulder: cfh * 0.175,
+    // As fractions of the body below the chin, to blend with the first set.
+    chest: (cfh * 0.26 - cu) / (cfh - cu), waist: (cfh * 0.37 - cu) / (cfh - cu),
+    hip: (cfh * 0.455 - cu) / (cfh - cu), crotch: (cfh * 0.49 - cu) / (cfh - cu),
+    knee: (cfh * 0.73 - cu) / (cfh - cu),
+    sw: cfh * (0.122 - b * 0.017), ww: cfh * (0.08 - b * 0.02), hw: cfh * (0.085 + b * 0.025),
+    neck: cfh * 0.028, armW: cfh * 0.034, foreW: cfh * 0.028,
+    kneeW: cfh * 0.032, calf: cfh * 0.036, ankle: cfh * 0.02, hand: cfh * 0.045,
+  };
+  type Body = typeof canon;
+  const m = {} as Body;
+  for (const key in canon) {
+    const k = key as keyof Body;
+    m[k] = stylised[k] + (canon[k] - stylised[k]) * blend;
+  }
+
+  return m;
+}
+
+export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, blend = MIX): void {
   const ids = new Uint8Array(W * H);
   const put = (x: number, y: number, id: number) => {
     if (x >= 0 && x < W && y >= 0 && y < H) ids[y * W + x] = id;
@@ -103,46 +151,22 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
 
   const cx = W / 2;
   const ground = H - 3;
-  const b = look.build;
-  const t = (Math.min(Math.max(look.height, 145), 195) - 145) / 50;
 
-  // -- proportions ---------------------------------------------------------
-  // Landmarks from the classical canons (Loomis and Richer, via Proko's
-  // notes), restated as fractions of total height so they hold at any size,
-  // then pulled partway back toward a more stylised figure: the canon in
-  // full read as too realistic for this art, and the first doll as too
-  // young. These sit between the two by the owner's eye.
-  // In the 8-head figure: nipples at 2 heads, navel at 3, crotch at 4 --
-  // half the height -- and knees near 6. Anime enlarges the head to 7-7.5
-  // heads for an adult; below about 6 a figure starts to read as a child,
-  // which an adult character must never do. Shorter people get a slightly
-  // larger head for their height, as real ones do, but never leave the
-  // adult range.
-  const fh = 104 + t * 21;
-  const heads = 6.2 + t * 0.8;
-  const u = fh / heads;
+  // -- proportions: see measure() ----------------------------------------
+  const m = measure(look, blend);
+  const fh = m.fh, u = m.u;
   const k = u / 17; // scale for features drawn in head-sized pixels
   const top = ground - fh;
-  const y = (fraction: number) => top + fh * fraction;
   const headY = top + u / 2;
   const chin = top + u;
-  const shoulderY = y(0.18);
-  const chestY = y(0.27);
-  const waistY = y(0.385);
-  const hipY = y(0.48);
-  const crotchY = y(0.525); // legs a little under half: stylised, not realistic
-  const kneeY = y(0.745);
-  // Widths as fractions of height too, measured across the deltoids: about
-  // 0.24 of height for a man and 0.21 for a woman (Loomis's 0.29 is his
-  // heroic ideal, and on an anime head it makes a linebacker). Hips run
-  // about 0.17 for a straight build and match the shoulders on a curvy one,
-  // which is what makes an hourglass rather than a wedge.
-  const sw = fh * (0.11 - b * 0.015);
-  const ww = fh * (0.071 - b * 0.019);
-  const hw = fh * (0.076 + b * 0.028);
-  const neck = fh * 0.028;
-  const armW = fh * 0.031; // upper arm, full width
-  const foreW = fh * 0.026;
+  const L = ground - chin;
+  const shoulderY = top + m.shoulder;
+  const chestY = chin + L * m.chest;
+  const waistY = chin + L * m.waist;
+  const hipY = chin + L * m.hip;
+  const crotchY = chin + L * m.crotch;
+  const kneeY = chin + L * m.knee;
+  const { sw, ww, hw, neck, armW, foreW } = m;
 
   // -- behind the body ---------------------------------------------------
   const style = look.style;
@@ -156,7 +180,7 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
   // -- body ----------------------------------------------------------------
   // Legs: the thigh fills the hip, tapering to a knee, a calf with some
   // shape below it, and a slim ankle.
-  const knee = fh * 0.032, calf = fh * 0.036, ankle = fh * 0.02;
+  const knee = m.kneeW, calf = m.calf, ankle = m.ankle;
   const legX = hw * 0.5; // centre line of each leg at the knee
   both([[hw, hipY], [0.4, crotchY], [legX - knee + 0.5, kneeY], [legX - ankle * 0.6, ground - 1], [legX + ankle * 1.4, ground - 1], [legX + calf, kneeY + (ground - kneeY) * 0.3], [legX + knee, kneeY], [hw * 0.92, (hipY + kneeY) / 2]], P.LegL, P.LegR);
   ellipse(cx - legX, ground - 0.8, ankle + 1.6, 1.6, P.LegL);
@@ -184,7 +208,7 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
   // A round deltoid caps the shoulder.
   ellipse(cx - shoulderX, shoulderY + armW * 0.85, armW * 0.6, armW * 0.7, P.ArmL);
   ellipse(cx + shoulderX, shoulderY + armW * 0.85, armW * 0.6, armW * 0.7, P.ArmR);
-  const hand = fh * 0.045;
+  const hand = m.hand;
   ellipse(cx - wristX, crotchY + hand * 0.9, foreW * 0.55, hand, P.ArmL);
   ellipse(cx + wristX, crotchY + hand * 0.9, foreW * 0.55, hand, P.ArmR);
 
