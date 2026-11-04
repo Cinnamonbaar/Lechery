@@ -44,24 +44,22 @@ What the frames show beyond the numbers:
 - The **face** is barely shaded: dot blush, a one-or-two-pixel nose, small
   lips, the jaw line, a shadow under the jaw on the neck.
 
-**Slynyrd, Pixelblog 49: Realistic Human Anatomy** — the 8-head model.
-[Link](https://www.slynyrd.com/blog/2024/3/25/pixelblog-49-realistic-human-anatomy).
-Built exactly the way we now build the doll: head, torso, arms and legs
-blocked out separately in flat colours, measured, then dressed. Labelled
-measurements: man 96 px tall, head 12 px tall and 9 wide, shoulders 27 px
-(0.28 of height); woman 88 px tall, head 11 px tall and 9 wide, shoulders
-23 px (0.26). About eight colours per figure.
+**Not used for body proportions: Slynyrd's Pixelblog 49 and 17.** These
+are a realistic 8-head figure and a deliberately stocky 6-head sprite
+model, not anime, so their limb widths and builds do not apply. An earlier
+draft of this document concluded from them that our limbs should be
+twice as thick; that was the wrong style to measure against, and is
+withdrawn. What still transfers is *method*, not proportion: they build
+the body part by part in flat colours before dressing it, and show anatomy
+with a few interior marks (collarbones, the line under the chest, navel,
+knees) instead of shading every edge.
+[49](https://www.slynyrd.com/blog/2024/3/25/pixelblog-49-realistic-human-anatomy),
+[17](https://www.slynyrd.com/blog/2019/5/21/pixelblog-17-human-anatomy).
 
-**Slynyrd, Pixelblog 17: Human Anatomy** — the stylised 6-head sprite
-model. [Link](https://www.slynyrd.com/blog/2019/5/21/pixelblog-17-human-anatomy).
-The clearest lesson for us is how a body reads *without* pillow shading:
-flat fill, an outline in a darker skin tone, and anatomy given by a few
-interior marks — collarbones, the line under the chest, navel, knee caps,
-the groin V, the inner elbow. Limbs are substantial: an upper arm about 7%
-of the figure's height, thighs that touch and taper, real hands and feet.
-**Ours are about half as thick** — sticks with a gap between the legs —
-which no text source flagged. His model is deliberately stocky, so ours
-should not go all the way, but it should go most of it.
+**Rejected: tutorial-site proportion sheets.** Anyone can publish one, and
+the one measured here (Anime Art Academy) was judged by the owner to have
+weird proportions. Body references should be professional work — official
+game art, studio model sheets, published artbooks, or art the owner picks.
 
 ## 1. Shading — the biggest flaw: we pillow-shade
 
@@ -259,8 +257,8 @@ Sources: [sprite-ai — anime pixel art](https://www.sprite-ai.art/blog/anime-pi
 2. **Face** — the measured Slynyrd proportions: narrower tapered jaw and
    pointed chin, eyes raised to the midline and set further apart, neck
    leaving the jaw.
-3. **Body** — limbs roughly twice as thick, thighs that touch and taper,
-   real hands and feet, rounded outlines.
+3. **Body** — waiting on professional anime body references; rounded
+   outlines through the landmarks are safe to do regardless.
 4. **Hair** — flow from a cowlick, clumps split by strand lines, jagged
    tips, shine patches on the dome, standing well off the skull, a cast
    shadow on the face.
