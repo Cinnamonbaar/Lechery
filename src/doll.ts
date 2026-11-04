@@ -108,7 +108,10 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
 
   // -- proportions ---------------------------------------------------------
   // Landmarks from the classical canons (Loomis and Richer, via Proko's
-  // notes), restated as fractions of total height so they hold at any size.
+  // notes), restated as fractions of total height so they hold at any size,
+  // then pulled partway back toward a more stylised figure: the canon in
+  // full read as too realistic for this art, and the first doll as too
+  // young. These sit between the two by the owner's eye.
   // In the 8-head figure: nipples at 2 heads, navel at 3, crotch at 4 --
   // half the height -- and knees near 6. Anime enlarges the head to 7-7.5
   // heads for an adult; below about 6 a figure starts to read as a child,
@@ -116,30 +119,30 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
   // larger head for their height, as real ones do, but never leave the
   // adult range.
   const fh = 104 + t * 21;
-  const heads = 6.9 + t * 0.6;
+  const heads = 6.2 + t * 0.8;
   const u = fh / heads;
   const k = u / 17; // scale for features drawn in head-sized pixels
   const top = ground - fh;
   const y = (fraction: number) => top + fh * fraction;
   const headY = top + u / 2;
   const chin = top + u;
-  const shoulderY = y(0.175);
-  const chestY = y(0.26);
-  const waistY = y(0.37);
-  const hipY = y(0.455);
-  const crotchY = y(0.49); // a touch above half: anime legs run long
-  const kneeY = y(0.73);
+  const shoulderY = y(0.18);
+  const chestY = y(0.27);
+  const waistY = y(0.385);
+  const hipY = y(0.48);
+  const crotchY = y(0.525); // legs a little under half: stylised, not realistic
+  const kneeY = y(0.745);
   // Widths as fractions of height too, measured across the deltoids: about
   // 0.24 of height for a man and 0.21 for a woman (Loomis's 0.29 is his
   // heroic ideal, and on an anime head it makes a linebacker). Hips run
   // about 0.17 for a straight build and match the shoulders on a curvy one,
   // which is what makes an hourglass rather than a wedge.
-  const sw = fh * (0.122 - b * 0.017);
-  const ww = fh * (0.08 - b * 0.02);
-  const hw = fh * (0.085 + b * 0.025);
+  const sw = fh * (0.11 - b * 0.015);
+  const ww = fh * (0.071 - b * 0.019);
+  const hw = fh * (0.076 + b * 0.028);
   const neck = fh * 0.028;
-  const armW = fh * 0.034; // upper arm, full width
-  const foreW = fh * 0.028;
+  const armW = fh * 0.031; // upper arm, full width
+  const foreW = fh * 0.026;
 
   // -- behind the body ---------------------------------------------------
   const style = look.style;
