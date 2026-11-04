@@ -186,8 +186,14 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray): void {
         const m = material(id);
         set(i, at(x + 1, y) !== id || at(x, y + 1) !== id ? m[1] : at(x - 1, y) !== id || at(x, y - 1) !== id ? m[3] : m[2]);
       } else {
-        const n = at(x + 1, y) || at(x - 1, y) || at(x, y + 1) || at(x, y - 1);
-        if (n) set(i, material(n)[0]);
+        // Selective outline: the light comes from the top left, so where the
+        // figure lies below or to the right of this pixel the edge is lit
+        // and takes the part's own shadow tone; on the far sides it takes
+        // the darkest. A flat black line all round is what makes pixel art
+        // look like a sticker.
+        const lit = at(x + 1, y) || at(x, y + 1);
+        const n = lit || at(x - 1, y) || at(x, y - 1);
+        if (n) set(i, material(n)[lit ? 1 : 0]);
       }
     }
 
