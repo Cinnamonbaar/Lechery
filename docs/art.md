@@ -5,6 +5,64 @@ what to change. Sources are linked at the end of each section; most are
 tutorial sites rather than books, so where they disagree that is noted and
 the choice is ours.
 
+## 0. Visual references, measured
+
+Text alone is not enough, so the main references were downloaded, broken
+into frames and measured pixel by pixel. They are not committed — they
+are other people's work — but each is linked and its numbers are below.
+
+**Slynyrd, Pixelblog 29: Anime Faces and Hair** — pixel art, our exact
+medium. [Link](https://www.slynyrd.com/blog/2020/7/28/pixelblog-29-anime-faces-and-hair).
+Head outlines measured from the final frame, on a 34-pixel-wide head,
+crown 0 to chin 1:
+
+| | Female | Male | Ours (before) |
+|---|---|---|---|
+| width ÷ height | 0.85 | 0.81 | 0.87 |
+| brow line | 0.40 | 0.40 | 0.43 |
+| eye centre | 0.525 | 0.55 | 0.585 |
+| eye width ÷ head width | 0.18–0.2 | 0.18 | 0.22 |
+| gap between eyes ÷ head width | 0.29 | 0.29 | 0.22 |
+| jaw starts to narrow | 0.65 | 0.62 | 0.56 |
+| chin width ÷ head width | 0.06 | 0.12 | 0.36 |
+| mouth | 0.825 | 0.83 | 0.86 |
+| neck width ÷ head width | 0.47 | — | ~0.5 |
+
+What the frames show beyond the numbers:
+- The head is built as a circle, then a jaw that angles in to a soft
+  point; the neck leaves the jaw near the chin.
+- **Line**: one pixel, a dusty dark purple-grey, never black, with lighter
+  in-between pixels where a curve steps — hand anti-aliasing.
+- **Hair** is drawn in four steps: flow lines from a cowlick toward the
+  back of the head; one flat colour blocked in; then refined into clumps
+  with shadows; then highlights. Clumps are split by thin dark strand
+  lines that converge toward the crown. The silhouette ends in jagged,
+  outward-flaring tips. The hair stands well off the skull. Lighter patches
+  sit on the upper dome between strand lines. Hair casts a shadow on the
+  face under the bangs and at the temples. Bangs may cross the eyes — a
+  style choice, not a rule.
+- The **face** is barely shaded: dot blush, a one-or-two-pixel nose, small
+  lips, the jaw line, a shadow under the jaw on the neck.
+
+**Slynyrd, Pixelblog 49: Realistic Human Anatomy** — the 8-head model.
+[Link](https://www.slynyrd.com/blog/2024/3/25/pixelblog-49-realistic-human-anatomy).
+Built exactly the way we now build the doll: head, torso, arms and legs
+blocked out separately in flat colours, measured, then dressed. Labelled
+measurements: man 96 px tall, head 12 px tall and 9 wide, shoulders 27 px
+(0.28 of height); woman 88 px tall, head 11 px tall and 9 wide, shoulders
+23 px (0.26). About eight colours per figure.
+
+**Slynyrd, Pixelblog 17: Human Anatomy** — the stylised 6-head sprite
+model. [Link](https://www.slynyrd.com/blog/2019/5/21/pixelblog-17-human-anatomy).
+The clearest lesson for us is how a body reads *without* pillow shading:
+flat fill, an outline in a darker skin tone, and anatomy given by a few
+interior marks — collarbones, the line under the chest, navel, knee caps,
+the groin V, the inner elbow. Limbs are substantial: an upper arm about 7%
+of the figure's height, thighs that touch and taper, real hands and feet.
+**Ours are about half as thick** — sticks with a gap between the legs —
+which no text source flagged. His model is deliberately stocky, so ours
+should not go all the way, but it should go most of it.
+
 ## 1. Shading — the biggest flaw: we pillow-shade
 
 **What the references say.** *Pillow shading* is the classic pixel-art
@@ -192,9 +250,17 @@ Sources: [sprite-ai — anime pixel art](https://www.sprite-ai.art/blog/anime-pi
 
 ## Order of work
 
-1. **Shading** — shadow shapes for one light, replacing edge bands. Affects
-   every part, so it goes first.
-2. **Line** — two weights, thicker at junctions.
-3. **Hair** — clumps from a parting, shadows, angel ring.
-4. **Face** — adult head shape and jaw, eye shape, hair's forehead shadow.
-5. **Body** — rounded outlines, build as rounded vs angular.
+1. **Shading and line together** — flat fill, a one-pixel outline in a dark
+   tint of each material with hand-style anti-aliasing at curve steps, and
+   shadows as meaningful shapes for one light (under the jaw on the neck,
+   under the bangs, under the arms and chest, the body's far side) instead
+   of edge bands. Interior anatomy as a few marks. Affects every part, so
+   it goes first.
+2. **Face** — the measured Slynyrd proportions: narrower tapered jaw and
+   pointed chin, eyes raised to the midline and set further apart, neck
+   leaving the jaw.
+3. **Body** — limbs roughly twice as thick, thighs that touch and taper,
+   real hands and feet, rounded outlines.
+4. **Hair** — flow from a cowlick, clumps split by strand lines, jagged
+   tips, shine patches on the dome, standing well off the skull, a cast
+   shadow on the face.
