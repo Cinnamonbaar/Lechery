@@ -7,6 +7,7 @@
  */
 import { EYES, HAIR, ORIGINS, PRONOUNS, SKIN, STYLES, type Swatch } from "./content";
 import { type Character, look, roll, save } from "./character";
+import { H, W } from "./doll";
 import { dollView } from "./dollview";
 import { h } from "./h";
 
@@ -110,8 +111,8 @@ export function creation(c: Character, done: (c: Character) => void) {
   const stage = h("div", "panel stage", doll.el, plate, dice);
   new ResizeObserver(() => {
     const dpr = devicePixelRatio || 1;
-    const scale = Math.max(1, Math.floor(Math.min(stage.clientHeight * 0.96 / 120, stage.clientWidth / 64) * dpr));
-    doll.el.style.height = `${(120 * scale) / dpr}px`;
+    const scale = Math.max(1, Math.floor(Math.min(stage.clientHeight * 0.96 / H, stage.clientWidth / W) * dpr));
+    doll.el.style.height = `${(H * scale) / dpr}px`;
   }).observe(stage);
 
   changed();
