@@ -2,7 +2,7 @@
 
 ## The size budget
 
-The shipped game must stay **under 10 KB, gzip-compressed** — the total of
+The shipped game must stay **under 20 KB, gzip-compressed** — the total of
 every file in the build, measured the way a phone downloads it.
 
 `npm run size` measures it, and CI fails the build if it is over.
@@ -13,6 +13,10 @@ easier with more room, not quietly, and never by editing the check to pass.
 If a change does not fit, the default answer is to make it smaller. If it
 truly cannot be made smaller, stop and make the case to the owner, and
 raise the limit only after a clear yes.
+
+History: started at 10 KB. Raised to 20 KB by agreement once the paperdoll
+reached the old limit — the doll is the heart of the first five minutes,
+and it had become a fight against the budget rather than for the art.
 
 ## The goal
 
