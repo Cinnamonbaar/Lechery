@@ -44,10 +44,10 @@ function style(n: number, c: number): Style {
   return [
     // Short: tousled, swept from a parting on the right; pointed tufts at
     // varied lengths, forehead showing between, tufts flaring at the cheeks.
-    { line: 0.3, back: nape, front: [
-      ...pair([-30, 20, -44, 40, -48, 62, 14]),
-      [16, 2, 22, 18, 18, 34, 10], [20, 0, 32, 20, 34, 48, 16],
-      [-10, 4, -30, 14, -40, 38, 16], [0, 2, -14, 16, -24, 42, 18], [10, 0, 8, 22, -2, 45, 18],
+    { line: 0.2, back: nape, front: [
+      ...pair([-34, 24, -46, 44, -50, 62, 14]),
+      [26, 8, 36, 24, 38, 48, 20], [14, 6, 22, 22, 20, 38, 20],
+      [-18, 8, -34, 20, -40, 46, 20], [-6, 6, -20, 20, -27, 41, 22], [8, 4, 2, 24, -6, 50, 22],
     ] },
     // Bob: a blunt fringe cut straight at the brow, and sides that flare
     // past the head and turn in under the jaw.
@@ -62,13 +62,13 @@ function style(n: number, c: number): Style {
     ] },
     // Ponytail: one big lock swept across from a side parting, the rest
     // pulled back into a tail behind the head.
-    { line: 0.3, back: [...nape, [26, 10, 84, 30, 50, c + 10, 34], [24, 12, 46, 6, 50, 26, 18]], front: [
-      [-32, 16, -40, 36, -38, 54, 12], [28, 4, 36, 20, 34, 44, 12], [24, 0, -6, 8, -34, 42, 30],
+    { line: 0.2, back: [...nape, [26, 10, 84, 30, 50, c + 10, 34], [24, 12, 46, 6, 50, 26, 18]], front: [
+      [-32, 16, -40, 36, -38, 54, 12], [30, 8, 36, 22, 35, 42, 16], [14, 8, -2, 22, -12, 40, 20], [22, 4, 0, 10, -32, 44, 34],
     ] },
     // Twintails: the classic split fringe -- a long centre point between
     // the eyes, shorter clumps either side, long locks framing the cheeks.
-    { line: 0.3, back: [...nape, ...pair([-30, 14, -84, 40, -54, c + 30, 32], [-28, 14, -46, 6, -48, 26, 16])], front: [
-      ...pair([-22, 8, -32, 26, -32, 54, 13], [-10, 4, -15, 20, -18, 36, 14]), [0, 4, 0, 24, 0, 44, 14],
+    { line: 0.2, back: [...nape, ...pair([-30, 14, -84, 40, -54, c + 30, 32], [-28, 14, -46, 6, -48, 26, 16])], front: [
+      ...pair([-25, 10, -32, 28, -33, 54, 18], [-12, 6, -16, 22, -18, 40, 18]), [0, 6, 0, 26, 0, 48, 18],
     ] },
   ][n]!;
 }
@@ -83,7 +83,7 @@ function draw(r: Raster, b: HeadBox, list: Lock[], id: number) {
       const t = i / 12, s = 1 - t;
       const x = s * s * x0 + 2 * s * t * x1 + t * t * x2, y = s * s * y0 + 2 * s * t * y1 + t * t * y2;
       const dx = s * (x1 - x0) + t * (x2 - x1), dy = s * (y1 - y0) + t * (y2 - y1), d = Math.hypot(dx, dy) || 1;
-      const hw = (w / 2) * (blunt + (1 - blunt) * s ** 0.7);
+      const hw = (w / 2) * (blunt + (1 - blunt) * Math.min(1, s * 2.2)); // full, then a point
       left.push([b.cx + x - (dy / d) * hw, b.top + y + (dx / d) * hw]);
       right.push([b.cx + x + (dy / d) * hw, b.top + y - (dx / d) * hw]);
     }

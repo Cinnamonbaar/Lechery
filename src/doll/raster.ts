@@ -99,7 +99,10 @@ export function raster(out: Uint8ClampedArray) {
   };
 
   /** Colour every part, then outline the figure by the light. */
-  const shade = (material: (id: number) => Ramp, mass: (id: number) => number) => {
+  const shade = (material: (id: number) => Ramp, mass: (id: number) => number, band = (_: number) => SHADE, open = (_: number) => false) => {
+    // `open` parts also lie over the rest: what they cover takes no edge
+    // from them, since its own shape does not end there.
+    const differs = (n: number, id: number) => n !== id && !(open(n) && !open(id));
     out.fill(0);
     for (let y = Math.max(0, minY - OUTLINE); y <= Math.min(H - 1, maxY + OUTLINE); y++)
       for (let x = Math.max(0, minX - OUTLINE); x <= Math.min(W - 1, maxX + OUTLINE); x++) {
@@ -109,11 +112,16 @@ export function raster(out: Uint8ClampedArray) {
           // same at any resolution.
           const m = material(id);
           let tone = m[2];
-          for (let d = 1; d <= SHADE; d++)
-            if (mass(at(x + d, y)) !== id || mass(at(x, y + d)) !== id) { tone = m[1]; break; }
+          for (let d = 1, n = band(id); d <= n; d++)
+            if (differs(mass(at(x + d, y)), id) || differs(mass(at(x, y + d)), id)) { tone = m[1]; break; }
           if (tone === m[2])
             for (let d = 1; d <= LIGHT; d++)
-              if (mass(at(x - d, y)) !== id || mass(at(x, y - d)) !== id) { tone = m[3]; break; }
+              {
+                // `open` parts catch light only against the empty frame,
+                // not against other parts.
+                const a = mass(at(x - d, y)), b = mass(at(x, y - d));
+                if (open(id) ? !a || !b : differs(a, id) || differs(b, id)) { tone = m[3]; break; }
+              }
           set(i, tone);
         } else {
           // Selective outline: where the figure lies below or right of this
