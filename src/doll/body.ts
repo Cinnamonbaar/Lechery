@@ -10,6 +10,10 @@ import type { Raster } from "./raster";
 
 /** Head height as a fraction of total height: 7.3 heads, as measured. */
 export const HEAD_FRACTION = 0.137;
+/** How far the head sits below the top of the figure, as a fraction of
+ * height: the crown dips so the chin lands near the reference's 0.145 and
+ * the neck is not drawn out. */
+export const HEAD_DROP = 0.012;
 /** The first sample at which an arm hangs from the shoulder. */
 const ARM_TOP = 3;
 
@@ -77,7 +81,7 @@ export function landmarks(look: Look, cx: number, ground: number) {
   const c = curves(look.build);
   const y = (f: number) => top + fh * f;
   return {
-    cx, ground, top, fh, u, c, chin: top + u,
+    cx, ground, top, fh, u, c, crown: top + fh * HEAD_DROP, chin: top + fh * HEAD_DROP + u,
     shoulderY: y(0.19), chestY: y(0.26), waistY: y(0.34), hipY: y(0.47),
     crotchY: y(sampleT(c.crotch)), kneeY: y(0.67),
   };

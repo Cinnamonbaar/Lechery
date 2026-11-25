@@ -24,7 +24,7 @@ const CLOTH = "#e9e4f2";
 /** Where the parts go, for drawing and for tools that put guides on them. */
 export function layout(look: Look) {
   const a = landmarks(look, BW / 2, BH - 3);
-  return { ...a, head: headBox(a.cx, a.top, a.u) };
+  return { ...a, head: headBox(a.cx, a.crown, a.u) };
 }
 
 export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, layers = ALL): void {
