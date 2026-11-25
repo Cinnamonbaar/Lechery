@@ -9,8 +9,8 @@ import { drawBody, landmarks } from "./body";
 import { drawFace } from "./face";
 import { drawHairBack, drawHairFront } from "./hair";
 import { drawHead, headBox } from "./head";
-import { BRA_R, BRIEFS, HAIR_BACK, HAIR_FRONT, type Look, type Pose } from "./ids";
-import { BH, BW, ramp, raster } from "./raster";
+import { BRA_R, BRIEFS, HAIR_BACK, HAIR_BACK_LOCK, HAIR_FRONT, HAIR_LOCK, HEAD, type Look, type Pose } from "./ids";
+import { BH, BW, hex, INK, mix, ramp, raster, type Ramp } from "./raster";
 
 export { H, R, W, ramp } from "./raster";
 export { STYLE_COUNT } from "./hair";
@@ -36,6 +36,19 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, layers = AL
   if (layers & HAIR_FRONT_LAYER) drawHairFront(r, a.head, look.style, a);
 
   const skin = ramp(look.skin), hair = ramp(look.hair), cloth = ramp(CLOTH);
-  r.shade((id) => (id === HAIR_BACK || id === HAIR_FRONT ? hair : id >= BRIEFS && id <= BRA_R ? cloth : skin));
+  // Hair behind the head sits in its shadow: one tone darker throughout.
+  const back: Ramp = [hair[0], mix(hair[1], INK, 0.25), hair[1], hair[2]];
+  const front = (id: number) => id === HAIR_FRONT || id === HAIR_LOCK;
+  r.shade((id) => (id === HAIR_BACK || id === HAIR_BACK_LOCK ? back : front(id) ? hair : id >= BRIEFS && id <= BRA_R ? cloth : skin));
+
+  const { cx, top, h } = a.head, shine = mix(hair[3], hex("#ffffff"), 0.35);
+  r.paint(cx - h, top - h * 0.2, cx + h, top + h, (x, y) => {
+    // The fringe's shadow on the face, cast down and right from the light.
+    if (r.id(x, y) === HEAD && front(r.id(x - 0.3, y - 1.1))) return skin[1];
+    // The angel ring: a broken band of shine that curves with the skull,
+    // across the clumps rather than along them.
+    const dx = (x - cx) / (h * 0.42), dy = (y - top - h * 0.42) / (h * 0.46), d = Math.hypot(dx, dy);
+    return front(r.id(x, y)) && d > 0.72 && d < 0.79 && dy < -0.35 && Math.sin(Math.atan2(dy, dx) * 7) > -0.6 ? shine : null;
+  });
   if (layers & FACE) drawFace(r, a.head, look, pose, skin, hair);
 }

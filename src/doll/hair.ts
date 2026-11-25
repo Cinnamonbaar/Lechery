@@ -1,60 +1,88 @@
 /**
- * Hair, drawn around the head box -- never inside the face's rules. It can
- * grow, shrink or change style without moving an eye.
+ * Hair as clumps, the way anime hair is drawn: a parting, a few locks of
+ * varied width and length fanning from it, each a tapered curve ending in a
+ * point. A style is its own set of locks with its own silhouette -- a bob
+ * flares and turns in at the jaw, long hair falls past the shoulders -- so
+ * hair is not a cap that follows the skull. (AnimeOutline, Skyrye: clumps,
+ * not strands; varied sizes; volume off the skull; see docs/art.md.)
  *
- * Bangs end at the brow line at the lowest, so they frame the eyes rather
- * than cover them; side locks hang just outside the cheeks.
+ * Locks are given in hundredths of head height from the crown's centre,
+ * as root, bend and tip, then width at the root. Neighbouring locks take
+ * alternate part ids, so the shading draws the shadow line between clumps.
+ * The fringe ends at the brow between the eyes; longer locks frame them.
  */
-import { HAIR_BACK, HAIR_FRONT, type HeadBox } from "./ids";
 import { BROW_Y } from "./face";
+import { HAIR_BACK, HAIR_BACK_LOCK, HAIR_FRONT, HAIR_LOCK, type HeadBox } from "./ids";
 import type { Raster } from "./raster";
 
 export const STYLE_COUNT = 5;
 
-/** How far hair stands off the skull, as a multiple of its size. */
-export const HAIR_VOLUME = 1.14;
-/** Where the fringe's shortest strands end, from the crown. */
-export const FRINGE_TOP = 0.3;
-/** Where its longest end: the brow line, so the eyes stay clear. */
+/** The fringe's lowest point between the eyes: the brow line. */
 export const FRINGE_END = BROW_Y;
-/** Width of one strand, as a fraction of head width. */
-export const HAIR_STRAND = 0.176;
-/** Side locks: inner and outer edge, as fractions of head half-width. */
-export const LOCK_IN = 0.94;
-export const LOCK_OUT = 1.16;
-
-/** Strand lengths, 0 shortest to 1 longest, in a fixed pattern so the fringe
- * looks cut rather than stamped -- but the same every time it is drawn. */
-const LENGTHS = [0.25, 0.85, 0.1, 0.7, 1, 0.3, 0.75, 0];
 
 /** Body anchors the long styles fall to. */
 export interface Fall { shoulderY: number; chestY: number }
 
+type Lock = number[];
+
+/** The same lock on the other side. */
+const flip = (l: Lock): Lock => l.map((v, i) => (i < 6 && !(i & 1) ? -v : v));
+const pair = (l: Lock) => [l, flip(l)];
+
+/** Fringe from a parting just right of centre: framing locks at the
+ * temples first, the big centre clump last, on top. */
+const FRINGE: Lock[] = [
+  [-8, 4, -32, 18, -35, 56, 15],
+  [24, 6, 40, 24, 36, 58, 13],
+  [2, 2, -16, 16, -22, 44, 14],
+  [16, 4, 28, 18, 27, 36, 12],
+  [-4, 4, -8, 18, -12, 32, 10],
+  [10, 2, 14, 18, 12, 44, 13],
+  [5, 0, 0, 22, -3, 46, 16],
+];
+
+/** Locks for a style: behind the body, and in front beside the face.
+ * `c` is the chest, in the same hundredths of head height. */
+function locks(style: number, c: number): [Lock[], Lock[]] {
+  const short = pair([-25, 30, -48, 50, -42, 70, 22]), side = pair([-30, 22, -41, 42, -37, 62, 12]);
+  return [
+    [
+      short,
+      [...pair([-10, 10, -60, 45, -46, 92, 40]), ...pair([-20, 30, -50, 70, -30, 96, 30])],
+      [...pair([-10, 10, -62, 60, -50, c + 20, 46]), ...pair([-20, 40, -55, c - 20, -34, c + 30, 36])],
+      [...short, [26, 10, 84, 30, 50, c + 10, 34], [24, 12, 46, 6, 50, 26, 18]],
+      [...short, ...pair([-30, 14, -84, 40, -54, c + 30, 32]), ...pair([-28, 14, -46, 6, -48, 26, 16])],
+    ][style]!,
+    [side, pair([-30, 24, -44, 55, -34, 88, 14]), pair([-30, 24, -44, 70, -42, c, 16]), side, side][style]!,
+  ];
+}
+
+function draw(r: Raster, b: HeadBox, list: Lock[], ids: number[]) {
+  const k = b.h / 100;
+  list.forEach((l, n) => {
+    const [x0, y0, x1, y1, x2, y2, w] = l.map((v) => v * k) as [number, number, number, number, number, number, number];
+    const left: number[][] = [], right: number[][] = [];
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12, s = 1 - t;
+      const x = s * s * x0 + 2 * s * t * x1 + t * t * x2, y = s * s * y0 + 2 * s * t * y1 + t * t * y2;
+      const dx = s * (x1 - x0) + t * (x2 - x1), dy = s * (y1 - y0) + t * (y2 - y1), d = Math.hypot(dx, dy) || 1;
+      // Full at the root, narrowing to a point: a clump, not a ribbon.
+      const hw = (w / 2) * s ** 0.7;
+      left.push([b.cx + x - (dy / d) * hw, b.top + y + (dx / d) * hw]);
+      right.push([b.cx + x + (dy / d) * hw, b.top + y - (dx / d) * hw]);
+    }
+    r.poly([...left, ...right.reverse()], ids[n & 1]!);
+  });
+}
+
 export function drawHairBack(r: Raster, b: HeadBox, style: number, fall: Fall) {
-  const { cx, top, h, w } = b;
-  const k = h / 17, mid = top + h / 2, chin = top + h;
-  const hx = w * 0.61;
-  if (style === 1) r.poly([[cx - hx, mid - 3 * k], [cx + hx, mid - 3 * k], [cx + hx + 0.5, chin + 1], [cx - hx - 0.5, chin + 1]], HAIR_BACK);
-  if (style === 2) r.poly([[cx - hx, mid - 3 * k], [cx + hx, mid - 3 * k], [cx + hx + 1.5, fall.chestY + 9], [cx + 6, fall.chestY + 11], [cx, fall.chestY + 9], [cx - 6, fall.chestY + 11], [cx - hx - 1.5, fall.chestY + 9]], HAIR_BACK);
-  if (style === 3) r.ellipse(cx + w * 0.47, mid + 9 * k, 3.4 * k, 9 * k, HAIR_BACK);
-  if (style === 4) for (const s of [-1, 1]) r.poly([[cx + s * w * 0.47, mid - 6 * k], [cx + s * w * 0.81, mid - 2 * k], [cx + s * w * 0.85, fall.chestY + 7], [cx + s * w * 0.68, fall.chestY + 10], [cx + s * w * 0.57, mid + 2 * k]], HAIR_BACK);
-  r.ellipse(cx, mid - 0.5 * k, (w / 2) * HAIR_VOLUME * 1.02, (h / 2) * HAIR_VOLUME * 0.91, HAIR_BACK);
+  // The mass behind the head stands off the skull: volume.
+  r.ellipse(b.cx, b.top + b.h * 0.4, b.h * 0.45, b.h * 0.45, HAIR_BACK);
+  draw(r, b, locks(style, ((fall.chestY - b.top) / b.h) * 100)[0], [HAIR_BACK, HAIR_BACK_LOCK]);
 }
 
 export function drawHairFront(r: Raster, b: HeadBox, style: number, fall: Fall) {
-  const { cx, top, h, w } = b;
-  const mid = top + h / 2, half = w / 2;
-  const strand = w * HAIR_STRAND, depth = h * 0.18;
-  const fringe = (x: number, y: number) => {
-    const along = (x + 0.5 - cx) / strand + 0.5;
-    const phase = ((along % 1) + 1) % 1;
-    const n = LENGTHS[((Math.floor(along) % 8) + 8) % 8]!;
-    const tip = top + h * (FRINGE_TOP + (FRINGE_END - FRINGE_TOP) * n);
-    return y + 0.5 < tip - Math.abs(phase - 0.5) * 2 * depth;
-  };
-  r.ellipse(cx, mid - h * 0.094, half * HAIR_VOLUME, (h / 2) * HAIR_VOLUME * 0.83, HAIR_FRONT, fringe);
-  const lock = style === 0 ? mid + h * 0.18 : style === 2 ? fall.shoulderY + 4 : top + h;
-  const lo = half * LOCK_OUT, li = half * LOCK_IN, y0 = mid - h * 0.18;
-  r.poly([[cx - lo, y0], [cx - li, y0], [cx - li - 0.4, lock], [cx - lo + 0.2, lock - 1]], HAIR_FRONT);
-  r.poly([[cx + lo, y0], [cx + li, y0], [cx + li + 0.4, lock], [cx + lo - 0.2, lock - 1]], HAIR_FRONT);
+  // The crown, standing off the skull, down to where the fringe takes over.
+  r.ellipse(b.cx, b.top + b.h * 0.38, b.h * 0.43, b.h * 0.44, HAIR_FRONT, (_, y) => y < b.top + b.h * 0.3);
+  draw(r, b, [...locks(style, ((fall.chestY - b.top) / b.h) * 100)[1], ...FRINGE], [HAIR_LOCK, HAIR_FRONT]);
 }

@@ -138,5 +138,8 @@ export function raster(out: Uint8ClampedArray) {
       }
   };
 
-  return { ellipse, poly, both, shade, paint };
+  /** The part at a base-unit position, for painting that depends on it. */
+  const id = (x: number, y: number) => at(Math.floor(x * R), Math.floor(y * R));
+
+  return { ellipse, poly, both, shade, paint, id };
 }

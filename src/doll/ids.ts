@@ -5,7 +5,9 @@
  */
 export const HAIR_BACK = 1, LEG_L = 2, LEG_R = 3, TORSO = 4, NECK = 5,
   BUST_L = 6, BUST_R = 7, ARM_L = 8, ARM_R = 9, BRIEFS = 10, BULGE = 11,
-  BRA_L = 12, BRA_R = 13, HEAD = 14, HAIR_FRONT = 15;
+  BRA_L = 12, BRA_R = 13, HEAD = 14, HAIR_FRONT = 15,
+  /** A second id for alternate clumps, so neighbouring clumps shade apart. */
+  HAIR_LOCK = 16, HAIR_BACK_LOCK = 17;
 
 export interface Look {
   /** Centimetres. */
