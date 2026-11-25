@@ -68,6 +68,7 @@ function style(n: number, c: number): Style {
     // Twintails: the classic split fringe -- a long centre point between
     // the eyes, shorter clumps either side, long locks framing the cheeks.
     { line: 0.2, back: [...nape, ...pair([-30, 14, -84, 40, -54, c + 30, 32], [-28, 14, -46, 6, -48, 26, 16])], front: [
+      ...pair([-32, 20, -44, 44, -40, 68, 14]),
       ...pair([-25, 10, -32, 28, -33, 54, 18], [-12, 6, -16, 22, -18, 40, 18]), [0, 6, 0, 26, 0, 48, 18],
     ] },
   ][n]!;

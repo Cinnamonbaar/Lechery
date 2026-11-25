@@ -9,8 +9,8 @@ import { drawBody, landmarks } from "./body";
 import { drawFace } from "./face";
 import { drawHairBack, drawHairFront } from "./hair";
 import { drawHead, headBox } from "./head";
-import { BRA_R, BRIEFS, FRONT_LOCKS, HAIR_BACK, HAIR_FRONT, mass, type Look, type Pose } from "./ids";
-import { BH, BW, hex, INK, mix, R, ramp, raster, type Ramp } from "./raster";
+import { BRA_R, BRIEFS, FRONT_LOCKS, HAIR_BACK, HAIR_FRONT, HEAD, mass, type Look, type Pose } from "./ids";
+import { BH, BW, INK, mix, R, ramp, raster, type Ramp } from "./raster";
 
 export { H, R, W, ramp } from "./raster";
 export { STYLE_COUNT } from "./hair";
@@ -46,7 +46,18 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, layers = AL
     // catches light only on its outer edge, and lies over the face.
     (id) => id === HAIR_FRONT);
 
-  const { cx, top, h } = a.head, shine = mix(hair[3], hex("#ffffff"), 0.35);
+  const { cx, top, h } = a.head;
+  // Shine: the angel ring -- light around the head, seen from a little
+  // above, so its front half sags in the middle and rises at the sides (a
+  // smile, not the skull's dome). Its lower edge is jagged, a point per
+  // strand, the way Slynyrd breaks his highlights into clumps. Strand
+  // lines are drawn after, so they cut it.
+  const shine = mix(hair[3], [255, 250, 240], 0.3);
+  r.paint(cx - h, top, cx + h, top + h * 0.5, (x, y) => {
+    const u = (x - cx) / (h * 0.45), mid = top + h * (0.07 + 0.13 * (1 - u * u));
+    const jag = Math.abs(((x * 0.6) % 2) - 1) * h * 0.06;
+    return front(r.id(x, y)) && Math.abs(u) < 0.95 && y > mid - h * 0.035 && y < mid + h * 0.025 + jag ? shine : null;
+  });
   // Strand lines: a thin dark line wherever one lock lies on another, which
   // is what tells the clumps apart (the crown mass draws none).
   const lock = (id: number) => id >= FRONT_LOCKS;
@@ -57,11 +68,9 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, layers = AL
     const n = [r.id(x + e, y), r.id(x, y + e)].find((m) => lock(m) && m !== id && mass(m) === mass(id));
     return n ? (mass(id) === HAIR_BACK ? back : hair)[0] : null;
   });
-  r.paint(cx - h, top - h * 0.2, cx + h, top + h * 0.6, (x, y) => {
-    // The angel ring: a broken band of shine that curves with the skull,
-    // across the clumps rather than along them.
-    const dx = (x - cx) / (h * 0.42), dy = (y - top - h * 0.42) / (h * 0.46), d = Math.hypot(dx, dy);
-    return front(r.id(x, y)) && d > 0.72 && d < 0.79 && dy < -0.35 && Math.sin(Math.atan2(dy, dx) * 7) > -0.6 ? shine : null;
-  });
-  if (layers & FACE) drawFace(r, a.head, look, pose, skin, hair);
+
+  // The face paints only on the head, so eyes and brows never land on hair.
+  const onHead = { ...r, paint: (...[x0, y0, x1, y1, pick]: Parameters<typeof r.paint>) =>
+    r.paint(x0, y0, x1, y1, (x, y) => (r.id(x, y) === HEAD ? pick(x, y) : null)) };
+  if (layers & FACE) drawFace(onHead, a.head, look, pose, skin, hair);
 }

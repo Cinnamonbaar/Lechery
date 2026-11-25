@@ -256,8 +256,18 @@ are told apart by thin dark strand lines, not by shading each clump
 (shading each one at this size turned the fringe to noise). Each style has
 its own locks and its own fringe: spiky tufts (short), a blunt cut (bob), a
 centre parting with no fringe (long), one big side sweep (ponytail), a
-split fringe with a centre point (twintails). Back layer a tone darker,
-fringe shadow on the forehead, a broken angel ring.
+split fringe with a centre point (twintails). Back layer a tone darker.
+
+Shine (the angel ring) is a ring of light around the head seen from a
+little above, so its visible front half *sags* in the middle and rises at
+the sides — the opposite curve to the skull's outline. Drawn following the
+skull it reads as stray lines (the owner caught this). Its lower edge is
+toothed, a point per strand, as in Slynyrd's finished hair, and the strand
+lines cut through it.
+
+The fringe takes no shadow or highlight rim against the face (Slynyrd's
+has none; ours read as a helmet's visor), and the face is painted only on
+the head, never over hair.
 
 **Change.** Rebuild hair as clumps: a parting point, clumps fanning from
 it with varied widths and lengths, each a tapered shape; shadow under the
