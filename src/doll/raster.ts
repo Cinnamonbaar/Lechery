@@ -99,21 +99,21 @@ export function raster(out: Uint8ClampedArray) {
   };
 
   /** Colour every part, then outline the figure by the light. */
-  const shade = (material: (id: number) => Ramp) => {
+  const shade = (material: (id: number) => Ramp, mass: (id: number) => number) => {
     out.fill(0);
     for (let y = Math.max(0, minY - OUTLINE); y <= Math.min(H - 1, maxY + OUTLINE); y++)
       for (let x = Math.max(0, minX - OUTLINE); x <= Math.min(W - 1, maxX + OUTLINE); x++) {
-        const i = y * W + x, id = ids[i]!;
+        const i = y * W + x, id = mass(ids[i]!);
         if (id) {
           // Bands keep their width in base units, so shading reads the
           // same at any resolution.
           const m = material(id);
           let tone = m[2];
           for (let d = 1; d <= SHADE; d++)
-            if (at(x + d, y) !== id || at(x, y + d) !== id) { tone = m[1]; break; }
+            if (mass(at(x + d, y)) !== id || mass(at(x, y + d)) !== id) { tone = m[1]; break; }
           if (tone === m[2])
             for (let d = 1; d <= LIGHT; d++)
-              if (at(x - d, y) !== id || at(x, y - d) !== id) { tone = m[3]; break; }
+              if (mass(at(x - d, y)) !== id || mass(at(x, y - d)) !== id) { tone = m[3]; break; }
           set(i, tone);
         } else {
           // Selective outline: where the figure lies below or right of this

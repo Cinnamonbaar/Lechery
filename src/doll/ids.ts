@@ -6,8 +6,13 @@
 export const HAIR_BACK = 1, LEG_L = 2, LEG_R = 3, TORSO = 4, NECK = 5,
   BUST_L = 6, BUST_R = 7, ARM_L = 8, ARM_R = 9, BRIEFS = 10, BULGE = 11,
   BRA_L = 12, BRA_R = 13, HEAD = 14, HAIR_FRONT = 15,
-  /** A second id for alternate clumps, so neighbouring clumps shade apart. */
-  HAIR_LOCK = 16, HAIR_BACK_LOCK = 17;
+  /** Every hair lock has its own id from these up, so the lines between
+   * clumps can be found; for shading they all count as one mass. */
+  FRONT_LOCKS = 20, BACK_LOCKS = 60;
+
+/** The mass a part belongs to: all front hair is one, all back hair one. */
+export const mass = (id: number) =>
+  id === HAIR_FRONT || (id >= FRONT_LOCKS && id < BACK_LOCKS) ? HAIR_FRONT : id === HAIR_BACK || id >= BACK_LOCKS ? HAIR_BACK : id;
 
 export interface Look {
   /** Centimetres. */

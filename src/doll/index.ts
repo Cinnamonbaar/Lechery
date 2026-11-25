@@ -9,8 +9,8 @@ import { drawBody, landmarks } from "./body";
 import { drawFace } from "./face";
 import { drawHairBack, drawHairFront } from "./hair";
 import { drawHead, headBox } from "./head";
-import { BRA_R, BRIEFS, HAIR_BACK, HAIR_BACK_LOCK, HAIR_FRONT, HAIR_LOCK, HEAD, type Look, type Pose } from "./ids";
-import { BH, BW, hex, INK, mix, ramp, raster, type Ramp } from "./raster";
+import { BRA_R, BRIEFS, FRONT_LOCKS, HAIR_BACK, HAIR_FRONT, HEAD, mass, type Look, type Pose } from "./ids";
+import { BH, BW, hex, INK, mix, R, ramp, raster, type Ramp } from "./raster";
 
 export { H, R, W, ramp } from "./raster";
 export { STYLE_COUNT } from "./hair";
@@ -38,10 +38,19 @@ export function draw(look: Look, pose: Pose, out: Uint8ClampedArray, layers = AL
   const skin = ramp(look.skin), hair = ramp(look.hair), cloth = ramp(CLOTH);
   // Hair behind the head sits in its shadow: one tone darker throughout.
   const back: Ramp = [hair[0], mix(hair[1], INK, 0.25), hair[1], hair[2]];
-  const front = (id: number) => id === HAIR_FRONT || id === HAIR_LOCK;
-  r.shade((id) => (id === HAIR_BACK || id === HAIR_BACK_LOCK ? back : front(id) ? hair : id >= BRIEFS && id <= BRA_R ? cloth : skin));
+  const front = (id: number) => mass(id) === HAIR_FRONT;
+  r.shade((id) => (mass(id) === HAIR_BACK ? back : front(id) ? hair : id >= BRIEFS && id <= BRA_R ? cloth : skin), mass);
 
   const { cx, top, h } = a.head, shine = mix(hair[3], hex("#ffffff"), 0.35);
+  // Strand lines: a thin dark line wherever one lock lies on another, which
+  // is what tells the clumps apart (the crown mass draws none).
+  const lock = (id: number) => id >= FRONT_LOCKS;
+  r.paint(0, top - h * 0.2, BW, BH, (x, y) => {
+    const id = r.id(x, y), e = 1 / R;
+    if (!lock(id)) return null;
+    const n = [r.id(x + e, y), r.id(x, y + e)].find((m) => lock(m) && m !== id && mass(m) === mass(id));
+    return n ? (mass(id) === HAIR_BACK ? back : hair)[0] : null;
+  });
   r.paint(cx - h, top - h * 0.2, cx + h, top + h, (x, y) => {
     // The fringe's shadow on the face, cast down and right from the light.
     if (r.id(x, y) === HEAD && front(r.id(x - 0.3, y - 1.1))) return skin[1];

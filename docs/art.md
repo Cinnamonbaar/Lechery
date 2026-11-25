@@ -250,10 +250,14 @@ Sources: [Skyrye — anime head](https://skyryedesign.com/art/drawing/anime-mang
 locks. No parting, no clumps, no shadows, no shine. This is most of why
 the hair looks like a helmet.
 
-**Done (first pass).** `hair.ts` draws each style as its own set of
-locks (tapered quadratic curves from a parting, varied widths and lengths,
-alternate part ids so clumps shade apart), with a darker back layer, the
-fringe's shadow on the forehead and a broken angel ring.
+**Done.** After Slynyrd's "77 - Anime Hair" sheet (Pixelblog 29), drawn
+at nearly our head size: hair is one flat mass with an outline, and clumps
+are told apart by thin dark strand lines, not by shading each clump
+(shading each one at this size turned the fringe to noise). Each style has
+its own locks and its own fringe: spiky tufts (short), a blunt cut (bob), a
+centre parting with no fringe (long), one big side sweep (ponytail), a
+split fringe with a centre point (twintails). Back layer a tone darker,
+fringe shadow on the forehead, a broken angel ring.
 
 **Change.** Rebuild hair as clumps: a parting point, clumps fanning from
 it with varied widths and lengths, each a tapered shape; shadow under the
