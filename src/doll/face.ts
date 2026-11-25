@@ -15,18 +15,21 @@
 import type { HeadBox, Look, Pose } from "./ids";
 import { hex, INK, mix, ramp, type Raster, type Ramp, type Rgb } from "./raster";
 
+/** Placement measured from Slynyrd's anime heads (Pixelblog 29, crown 0,
+ * chin 1): eye 0.19 of head width; the gap a little under his 0.29W,
+ * since our measured head is narrower than his and the lid flick needs room. */
 /** Eye centre, from the crown, as a fraction of head height. */
-export const EYE_Y = 0.585;
+export const EYE_Y = 0.525;
 /** Eye width as a fraction of head width: 1/5 is real, anime larger. */
-export const EYE_W = 1 / 4.6;
+export const EYE_W = 0.19;
 /** Space between the eyes, in eye widths. */
-export const EYE_GAP = 1;
+export const EYE_GAP = 1.4;
 /** Eye height as a fraction of its width. */
 export const EYE_TALL = 1.22;
 /** Brow line: the second third. */
-export const BROW_Y = 0.43;
-export const NOSE_Y = 0.76;
-export const MOUTH_Y = 0.86;
+export const BROW_Y = 0.4;
+export const NOSE_Y = 0.7;
+export const MOUTH_Y = 0.825;
 /** Mouth width as a fraction of head width. */
 export const MOUTH_W = 0.1;
 
