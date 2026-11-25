@@ -1,110 +1,139 @@
-/** The body below the head: measurements, then torso, limbs and clothes. */
-import { ARM_L, ARM_R, BRA_L, BRA_R, BRIEFS, BULGE, BUST_L, BUST_R, LEG_L, LEG_R, NECK, TORSO, type Look, type Pose } from "./ids";
+/**
+ * The body below the head, drawn as smooth curves through silhouettes
+ * measured from the owner's chosen anime references (see profiles.ts and
+ * docs/art.md). The build slider blends from the male figure (0) through a
+ * female one (0.5) to the curviest (1).
+ */
+import { ARM_L, ARM_R, BRA_L, BRA_R, BRIEFS, BULGE, BUST_L, BUST_R, LEG_L, LEG_R, TORSO, type Look, type Pose } from "./ids";
+import { PROFILES, SAMPLES, sampleT, type Profile } from "./profiles";
 import type { Raster } from "./raster";
 
-/** 0 is the first, stylised doll; 1 the anatomical canon. See measure(). */
-export const MIX = 0.5;
+/** Head height as a fraction of total height: 7.3 heads, as measured. */
+export const HEAD_FRACTION = 0.137;
+/** The first sample at which an arm hangs from the shoulder. */
+const ARM_TOP = 3;
 
-/**
- * Two complete sets of measurements, and a blend between them.
- *
- * STYLISED is the first doll: a fixed 17-pixel head and a short frame, so
- * 4.7-6.6 heads tall, with a long torso, short legs and narrow shoulders.
- *
- * CANON is measured from the classical figure canons (Loomis and Richer,
- * via Proko's notes), restated as fractions of height so it holds at any
- * size: 6.9-7.5 heads, nipples, waist and hips at their landmarks, crotch
- * at a touch above half, shoulders and hips at measured widths.
- *
- * MIX chooses between them -- 0 is the first, 1 the canon -- so the look is
- * tuned by eye with one number instead of by guessing a dozen.
- */
-export function measure(look: Pick<Look, "height" | "build">, blend = MIX) {
-  const t = (Math.min(Math.max(look.height, 145), 195) - 145) / 50;
-  const b = look.build;
-  const stylised = {
-    fh: 80 + t * 32, u: 17,
-    shoulder: 20, chest: 0.16, waist: 0.34, hip: 0.46, crotch: 0.54, knee: 0.77,
-    sw: 8.4 - b * 1.6, ww: 5.8 - b * 1.7, hw: 6 + b * 3.8,
-    neck: 2, armW: 3.2, foreW: 2, kneeW: 1.4, calf: 1.6, ankle: 1.15, hand: 2,
-  };
-  const cfh = 104 + t * 21, cu = cfh / (6.9 + t * 0.6);
-  const canon = {
-    fh: cfh, u: cu,
-    shoulder: cfh * 0.175,
-    // As fractions of the body below the chin, to blend with the first set.
-    chest: (cfh * 0.26 - cu) / (cfh - cu), waist: (cfh * 0.37 - cu) / (cfh - cu),
-    hip: (cfh * 0.455 - cu) / (cfh - cu), crotch: (cfh * 0.49 - cu) / (cfh - cu),
-    knee: (cfh * 0.73 - cu) / (cfh - cu),
-    sw: cfh * (0.122 - b * 0.017), ww: cfh * (0.08 - b * 0.02), hw: cfh * (0.085 + b * 0.025),
-    neck: cfh * 0.028, armW: cfh * 0.034, foreW: cfh * 0.028,
-    kneeW: cfh * 0.032, calf: cfh * 0.036, ankle: cfh * 0.02, hand: cfh * 0.045,
-  };
-  type Body = typeof canon;
-  const m = {} as Body;
-  for (const key in canon) {
-    const k = key as keyof Body;
-    m[k] = stylised[k] + (canon[k] - stylised[k]) * blend;
+type Curves = { body: number[]; aOut: number[]; aIn: number[]; lOut: number[]; lIn: number[]; armpit: number; crotch: number; hand: number };
+
+/** A profile with every curve defined at every sample, so profiles blend. */
+function fill(p: Profile): Curves {
+  const aw = p.armOut[p.armpit]! - p.armIn[p.armpit]!;
+  let hand = p.armpit;
+  while (hand + 1 < SAMPLES && p.armOut[hand + 1]) hand++;
+  const c: Curves = { body: [], aOut: [], aIn: [], lOut: [], lIn: [], armpit: p.armpit, crotch: p.crotch, hand };
+  for (let i = 0; i < SAMPLES; i++) {
+    const t = p.torso[i]!, top = p.torso[Math.max(i, ARM_TOP)]!;
+    // Above the armpit the measured width includes the arms; the body is
+    // what is left once the arm's width comes off it.
+    c.body.push(i < ARM_TOP ? t : i < p.armpit ? t - aw + 4 : i < p.crotch ? t : p.torso[p.crotch - 1]!);
+    c.aOut.push(i < p.armpit ? top : p.armOut[Math.min(i, hand)]!);
+    c.aIn.push(i < p.armpit ? top - aw : p.armIn[Math.min(i, hand)]!);
+    c.lOut.push(i < p.crotch ? c.body[i]! : p.legOut[i]!);
+    c.lIn.push(i < p.crotch ? 0 : p.legIn[i]!);
   }
-  return m;
+  return c;
+}
+
+const FILLED = PROFILES.map(fill);
+
+/** Blend the measured figures for a build, 0 straight to 1 curvy. */
+function curves(build: number): Curves {
+  const at = Math.min(Math.max(build, 0), 1) * (FILLED.length - 1);
+  const a = FILLED[Math.floor(at)]!, b = FILLED[Math.min(Math.floor(at) + 1, FILLED.length - 1)]!, w = at - Math.floor(at);
+  const mix = (x: number[], y: number[]) => x.map((v, i) => v + (y[i]! - v) * w);
+  const c: Curves = {
+    body: mix(a.body, b.body), aOut: mix(a.aOut, b.aOut), aIn: mix(a.aIn, b.aIn),
+    lOut: mix(a.lOut, b.lOut), lIn: mix(a.lIn, b.lIn),
+    armpit: a.armpit + (b.armpit - a.armpit) * w, crotch: a.crotch + (b.crotch - a.crotch) * w, hand: Math.min(a.hand, b.hand),
+  };
+  // The hand is where the measured edges are noisiest (fingers); a light
+  // smoothing keeps it a hand rather than a fringe.
+  for (const k of ["aOut", "aIn"] as const) {
+    const s = c[k].slice();
+    for (let i = Math.ceil(c.armpit); i < c.hand; i++) s[i] = (c[k][i - 1]! + 2 * c[k][i]! + c[k][i + 1]!) / 4;
+    c[k] = s;
+  }
+  return c;
+}
+
+/** Halve the spacing of a polyline with a Catmull-Rom midpoint per segment,
+ * so curves through the samples read as curves, not facets. */
+export function smooth(pts: number[][]): number[][] {
+  const out: number[][] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p1 = pts[i]!, p2 = pts[i + 1];
+    out.push(p1);
+    if (!p2) break;
+    const p0 = pts[i - 1] ?? p1, p3 = pts[i + 2] ?? p2;
+    out.push([(-p0[0]! + 9 * p1[0]! + 9 * p2[0]! - p3[0]!) / 16, (p1[1]! + p2[1]!) / 2]);
+  }
+  return out;
 }
 
 /** Where everything is, in base units. Parts are drawn from this. */
-export function landmarks(look: Look, blend: number, cx: number, ground: number) {
-  const m = measure(look, blend);
-  const top = ground - m.fh, chin = top + m.u, L = ground - chin;
+export function landmarks(look: Look, cx: number, ground: number) {
+  const t = (Math.min(Math.max(look.height, 145), 195) - 145) / 50;
+  const fh = 96 + t * 28, top = ground - fh, u = fh * HEAD_FRACTION;
+  const c = curves(look.build);
+  const y = (f: number) => top + fh * f;
   return {
-    m, cx, ground, top, chin,
-    shoulderY: top + m.shoulder,
-    chestY: chin + L * m.chest,
-    waistY: chin + L * m.waist,
-    hipY: chin + L * m.hip,
-    crotchY: chin + L * m.crotch,
-    kneeY: chin + L * m.knee,
+    cx, ground, top, fh, u, c, chin: top + u,
+    shoulderY: y(0.19), chestY: y(0.26), waistY: y(0.34), hipY: y(0.47),
+    crotchY: y(sampleT(c.crotch)), kneeY: y(0.67),
   };
 }
 
 export type Landmarks = ReturnType<typeof landmarks>;
 
 export function drawBody(r: Raster, a: Landmarks, look: Look, pose: Pose) {
-  const { m, cx, ground, chin, shoulderY, chestY, waistY, hipY, crotchY, kneeY } = a;
-  const { sw, ww, hw, neck, armW, foreW } = m;
-  const both = (pts: number[][], left: number, right: number) => r.both(cx, pts, left, right);
+  const { cx, top, fh, c, chestY, crotchY } = a;
+  const X = (v: number) => (v / 1000) * fh, Y = (i: number) => top + fh * sampleT(i);
+  // Width of a curve at any height, between samples.
+  const at = (k: number[], f: number) => {
+    const i = (f - 0.14) / 0.02, j = Math.floor(i);
+    return X(k[j]! + ((k[j + 1] ?? k[j]!) - k[j]!) * (i - j));
+  };
+  const side = (pts: number[][]) => smooth(pts);
+  const mirror = (pts: number[][], left: number, right: number) => {
+    r.poly(pts.map(([x, y]) => [cx + x!, y!]), right);
+    r.poly(pts.map(([x, y]) => [cx - x!, y!]), left);
+  };
 
-  // Legs: the thigh fills the hip, tapering to a knee, a calf with some
-  // shape below it, and a slim ankle.
-  const knee = m.kneeW, calf = m.calf, ankle = m.ankle;
-  const legX = hw * 0.5;
-  both([[hw, hipY], [0.4, crotchY], [legX - knee + 0.5, kneeY], [legX - ankle * 0.6, ground - 1], [legX + ankle * 1.4, ground - 1], [legX + calf, kneeY + (ground - kneeY) * 0.3], [legX + knee, kneeY], [hw * 0.92, (hipY + kneeY) / 2]], LEG_L, LEG_R);
-  r.ellipse(cx - legX, ground - 0.8, ankle + 1.6, 1.6, LEG_L);
-  r.ellipse(cx + legX, ground - 0.8, ankle + 1.6, 1.6, LEG_R);
+  // The groin V of the owner's references: from the hip side at 44% straight
+  // down to the crotch (measured 0.44-0.455, meeting at 0.50). The torso
+  // ends on it and the legs start above it, so their seam is that line.
+  const V = (0.44 - sampleT(0)) / 0.02;
 
-  // The trapezius slopes from the neck to the shoulder rather than running
-  // flat: a level line there is what reads as a coat hanger.
-  const side = [[neck + (sw - neck) * 0.45, shoulderY - 0.6], [sw - armW * 0.5, shoulderY + 1.6], [sw - armW * 0.9, chestY + 1], [ww, waistY], [hw, hipY], [hw - 0.6, crotchY - 1], [0.5, crotchY + 0.5]];
-  r.poly([[cx - neck, shoulderY - 2.4], [cx + neck, shoulderY - 2.4], ...side.map(([x, y]) => [cx + x!, y!]), ...side.reverse().map(([x, y]) => [cx - x!, y!])], TORSO);
-  r.poly([[cx - neck, chin - 2], [cx + neck, chin - 2], [cx + neck + 0.3, shoulderY + 0.5], [cx - neck - 0.3, shoulderY + 0.5]], NECK);
+  // Legs: outer edge down, inner edge back up, from the hips to the soles.
+  const c0 = V - 1, last = SAMPLES - 1;
+  const outer: number[][] = [], inner: number[][] = [];
+  for (let i = c0; i <= last; i++) { outer.push([X(c.lOut[i]!), Y(i)]); inner.push([X(c.lIn[i]!), Y(i)]); }
+  mirror([...side(outer), ...side(inner).reverse()], LEG_L, LEG_R);
 
-  // Arms: elbow at the waist, wrist at the crotch, fingertips at mid-thigh,
-  // angling out only as far as they must to clear the waist and the hip.
-  const shoulderX = sw - armW * 0.5;
-  const elbowX = Math.max(shoulderX, ww + armW * 0.5 + 0.4);
-  const wristX = Math.max(elbowX, hw + foreW * 0.5 + 0.4);
-  const limb = (x0: number, y0: number, w0: number, x1: number, y1: number, w1: number) =>
-    both([[x0 - w0 / 2, y0], [x0 + w0 / 2, y0], [x1 + w1 / 2, y1], [x1 - w1 / 2, y1]], ARM_L, ARM_R);
-  limb(shoulderX, shoulderY + armW * 0.6, armW, elbowX, waistY, armW * 0.85);
-  limb(elbowX, waistY, armW * 0.85, wristX, crotchY, foreW * 0.75);
-  r.ellipse(cx - shoulderX, shoulderY + armW * 0.85, armW * 0.6, armW * 0.7, ARM_L);
-  r.ellipse(cx + shoulderX, shoulderY + armW * 0.85, armW * 0.6, armW * 0.7, ARM_R);
-  r.ellipse(cx - wristX, crotchY + m.hand * 0.9, foreW * 0.55, m.hand, ARM_L);
-  r.ellipse(cx + wristX, crotchY + m.hand * 0.9, foreW * 0.55, m.hand, ARM_R);
+  // The torso, neck to crotch, as one shape: the shoulder slope, chest,
+  // waist and hips are all the measured curve.
+  // The neck starts up under the jaw, so no seam shows between them.
+  const body: number[][] = [[X(c.body[0]!), a.chin - a.u * 0.2]];
+  for (let i = 0; i <= V; i++) body.push([X(c.body[i]!), Y(i)]);
+  const right = [...side(body), [0.4, crotchY]];
+  r.poly([...right, ...right.slice().reverse().map(([x, y]) => [-x!, y!])].map(([x, y]) => [cx + x!, y!]), TORSO);
 
-  // The bust sits on the nipple line and scales with the frame, so a cup
+  // Arms: from the shoulder to the fingertips. The top is a dome that
+  // continues the measured shoulder slope -- the deltoid -- rather than a
+  // flat cut, which reads as a square shoulder.
+  const ao: number[][] = [], ai: number[][] = [];
+  for (let i = ARM_TOP; i <= c.hand; i++) { ao.push([X(c.aOut[i]!), Y(i)]); ai.push([X(c.aIn[i]!), Y(i)]); }
+  const o0 = ao[0]!, i0 = ai[0]!;
+  ao.unshift([o0[0]! * 0.55 + i0[0]! * 0.45, o0[1]! - fh * 0.016]);
+  ai.unshift([i0[0]!, i0[1]! - fh * 0.009]);
+  mirror([...side(ao), ...side(ai).reverse()], ARM_L, ARM_R);
+
+  // The bust sits on the chest line and scales with the frame, so a cup
   // size reads the same on a short character as on a tall one.
-  const f = m.fh / 110;
+  const f = fh / 110, chest = at(c.body, 0.27);
   const rad = (1.4 + look.bust * 0.56) * f;
-  const by = chestY - 0.5 + look.bust * 0.36 * f - pose.breath;
-  const bx = Math.min(1.1 + rad * 0.86, sw - rad * 0.45);
+  const by = chestY + look.bust * 0.36 * f - pose.breath;
+  const bx = Math.min(1.1 + rad * 0.86, chest - rad * 0.45);
   if (look.bust > 0.3) {
     r.ellipse(cx - bx, by, rad, rad * 0.95, BUST_L);
     r.ellipse(cx + bx, by, rad, rad * 0.95, BUST_R);
@@ -113,6 +142,8 @@ export function drawBody(r: Raster, a: Landmarks, look: Look, pose: Pose) {
     r.ellipse(cx + bx, by, rad + 0.35, rad * 0.95 + 0.35, BRA_R, cup(1));
   }
 
-  r.poly([[cx - hw + 0.4, hipY + 0.5], [cx + hw - 0.4, hipY + 0.5], [cx + hw - 1.4, crotchY - 1], [cx + 1.6, crotchY + 2], [cx - 1.6, crotchY + 2], [cx - hw + 1.4, crotchY - 1]], BRIEFS);
+  // Briefs: a low band at 43%, the leg openings along the groin V.
+  const bt = 0.43, hipW = at(c.body, bt), vW = at(c.body, 0.44);
+  r.poly([[cx - hipW + 0.3, top + fh * bt], [cx + hipW - 0.3, top + fh * bt], [cx + vW - 0.3, Y(V)], [cx + 1.2, crotchY], [cx - 1.2, crotchY], [cx - vW + 0.3, Y(V)]], BRIEFS);
   if (look.endowment > 0.3) r.ellipse(cx, crotchY - 0.2, (1.3 + look.endowment * 0.13) * f, (1.5 + look.endowment * 0.2) * f, BULGE);
 }

@@ -42,7 +42,7 @@ function sheet(file: string, panels: Panel[], zoom: number) {
   let left = gap;
   for (const p of panels) {
     const out = new Uint8ClampedArray(W * H * 4);
-    draw(p.look, pose, out, undefined, p.layers);
+    draw(p.look, pose, out, p.layers);
     const [cw, ch] = cell(p);
     const s = zoom; // output pixels per raster pixel
     for (let y = 0; y < ch; y++)

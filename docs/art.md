@@ -97,6 +97,27 @@ Plan: draw the body as smooth curves through these measured profiles —
 build blending from the female figures to the male one — instead of
 straight-segment polygons.
 
+Done: `src/doll/profiles.ts` holds the silhouettes, measured every 2% of
+height from the four-figure sheet (torso, arm and leg edges, averaged left
+and right), and `body.ts` blends them by build and smooths them.
+
+**Head outline,** measured the same way: half-width every 5% from crown to
+chin, as a fraction of head height, scanning from the centre out so the ears
+are left out. All three figures agree within a few thousandths:
+
+| from crown | 0.05 | 0.15 | 0.25 | 0.35-0.40 | 0.50 | 0.60 | 0.70 | 0.80 | 0.90 | 0.95 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| half-width | 0.18 | 0.30 | 0.36 | 0.38 (widest) | 0.34 | 0.32 | 0.29 | 0.25 | 0.18 | 0.11 |
+
+So the head is an egg, 0.76 wide for its height: the cranium widest at
+35-40%, then one long, nearly straight taper through cheek and jaw to a
+pointed chin. It is not a circle on a block jaw, which is what we drew.
+
+**Groin V:** two straight lines that start just inside the hip at
+0.44-0.455 of height (0.68-0.85 of the half-width) and meet at the centre at
+0.50. The pelvis begins there, low, and not at a band across the hips. The
+torso now ends on this line, so the seam between torso and legs is the V.
+
 ## 1. Shading — the biggest flaw: we pillow-shade
 
 **What the references say.** *Pillow shading* is the classic pixel-art
