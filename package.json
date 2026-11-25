@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "size": "node tools/size.mjs",
-    "smoke": "node tools/smoke.mjs"
+    "smoke": "node tools/smoke.mjs",
+    "parts": "esbuild tools/parts.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/parts.mjs --log-level=warning && node node_modules/.cache/parts.mjs"
   },
   "devDependencies": {
     "playwright": "^1.64.1",

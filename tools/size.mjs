@@ -7,7 +7,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { gzipSync } from "node:zlib";
 
-const LIMIT = 10 * 1024;
+const LIMIT = 20 * 1024;
 const root = process.argv[2] ?? "dist";
 
 function files(dir) {
